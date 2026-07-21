@@ -26,6 +26,6 @@ public interface ListInterface<T> {
 
     int getNumberOfEntries();
 
-    void clear();
+    
 
 }
