@@ -8,6 +8,24 @@ package adt;
  *
  * @author jlohz
  */
-public interface ListInterface {
-    
+public interface ListInterface<T> {
+
+    boolean add(T newEntry);
+
+    boolean add(int position, T newEntry);
+
+    T remove(int position);
+
+    T getEntry(int position);
+
+    boolean replace(int position, T newEntry);
+
+    boolean contains(T anEntry);
+
+    boolean isEmpty();
+
+    int getNumberOfEntries();
+
+    void clear();
+
 }
