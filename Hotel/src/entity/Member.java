@@ -79,7 +79,19 @@ public class Member {
     public void setLoyaltyPoints(int loyaltyPoints) {
         this.loyaltyPoints = loyaltyPoints;
     }
+    
+    @Override
+    public boolean equals(Object obj) {
+        if (this == obj) {
+            return true;
+        }
+        if (obj == null || getClass() != obj.getClass()) {
+            return false;
+        }
 
+        Member other = (Member) obj;
+        return memberID.equals(other.memberID);
+    }
     @Override
     public String toString() {
         return "Member{" +
