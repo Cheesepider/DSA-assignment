@@ -55,4 +55,11 @@ public class Room {
                 ", roomStatus='" + roomStatus + '\'' +
                 '}';
     }
+    
+    public boolean equals(Object obj) {
+        if (this == obj) return true;
+        if (obj == null || getClass() != obj.getClass()) return false;
+        Room otherRoom = (Room) obj;
+        return this.roomID.equals(otherRoom.roomID);
+    }
 }

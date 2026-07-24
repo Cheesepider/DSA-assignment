@@ -29,7 +29,7 @@ public class DoublyLinkedList<T> implements ListInterface<T> {
         public Node(T data) {
             this(data, null, null);
         }
-
+        
         public Node(T data, Node next, Node previous) {
             this.data = data;
             this.next = next;
@@ -39,7 +39,17 @@ public class DoublyLinkedList<T> implements ListInterface<T> {
     
     @Override
     public boolean add(T newEntry) {
-        throw new UnsupportedOperationException("Not supported yet."); // Generated from nbfs://nbhost/SystemFileSystem/Templates/Classes/Code/GeneratedMethodBody
+        Node newNode = new Node(newEntry);
+        if(isEmpty()) {
+            firstNode = newNode;
+        }
+        else {
+            lastNode.next = newNode;
+            newNode.previous = lastNode;
+        }
+        lastNode = newNode;
+        numberOfEntries++;
+        return true;
     }
 
     @Override
@@ -49,12 +59,46 @@ public class DoublyLinkedList<T> implements ListInterface<T> {
 
     @Override
     public T remove(int position) {
-        throw new UnsupportedOperationException("Not supported yet."); // Generated from nbfs://nbhost/SystemFileSystem/Templates/Classes/Code/GeneratedMethodBody
+        if(position >= 1 && position <= numberOfEntries){
+            Node nodeToRemove = firstNode;
+            for(int i = 1; i < position; i++){
+                nodeToRemove = nodeToRemove.next;
+            }
+            T result = nodeToRemove.data;
+            if (position == 1){
+                firstNode = firstNode.next;
+                if(firstNode != null)
+                    firstNode.previous = null;
+                else
+                    lastNode = null;
+            } else if(position == numberOfEntries){
+                lastNode = lastNode.previous;
+                if(lastNode != null)
+                    lastNode.next = null;
+                else
+                    firstNode = null;
+            } else {
+                Node nodeBefore = nodeToRemove.previous;
+                Node nodeAfter = nodeToRemove.next;
+                nodeBefore.next = nodeAfter;
+                nodeAfter.previous = nodeBefore;
+            }
+            numberOfEntries--;
+            return result;
+        }
+        return null;
     }
 
     @Override
     public T getEntry(int position) {
-        throw new UnsupportedOperationException("Not supported yet."); // Generated from nbfs://nbhost/SystemFileSystem/Templates/Classes/Code/GeneratedMethodBody
+        if (position >= 1 && position <= numberOfEntries){
+            Node currentNode = firstNode;
+            for (int i = 1; i < position;i++){
+                currentNode = currentNode.next;
+            }
+            return currentNode.data;
+        }
+        return null;
     }
 
     @Override
@@ -69,12 +113,12 @@ public class DoublyLinkedList<T> implements ListInterface<T> {
 
     @Override
     public boolean isEmpty() {
-        throw new UnsupportedOperationException("Not supported yet."); // Generated from nbfs://nbhost/SystemFileSystem/Templates/Classes/Code/GeneratedMethodBody
+        return numberOfEntries == 0;
     }
 
     @Override
     public int getNumberOfEntries() {
-        throw new UnsupportedOperationException("Not supported yet."); // Generated from nbfs://nbhost/SystemFileSystem/Templates/Classes/Code/GeneratedMethodBody
+        return numberOfEntries;
     }
 
     @Override
