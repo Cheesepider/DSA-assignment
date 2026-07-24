@@ -8,12 +8,16 @@ package entity;
  *
  * @author jlohz
  */
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+
+
 public class Booking {
 
     private String bookingID;
-    private String bookingDate;
-    private String checkInDate;
-    private String checkOutDate;
+    private LocalDateTime bookingDate;
+    private LocalDate checkInDate;
+    private LocalDate checkOutDate;
 
     private Member member;
     private Room room;
@@ -21,9 +25,9 @@ public class Booking {
     public Booking() {
     }
 
-    public Booking(String bookingID, String bookingDate,
-                   String checkInDate, String checkOutDate,
-                   Member member, Room room) {
+    public Booking(String bookingID, LocalDateTime bookingDate,
+               LocalDate checkInDate, LocalDate checkOutDate,
+               Member member, Room room) {
 
         this.bookingID = bookingID;
         this.bookingDate = bookingDate;
@@ -41,27 +45,27 @@ public class Booking {
         this.bookingID = bookingID;
     }
 
-    public String getBookingDate() {
+    public LocalDateTime getBookingDate() {
         return bookingDate;
     }
 
-    public void setBookingDate(String bookingDate) {
+    public void setBookingDate(LocalDateTime bookingDate) {
         this.bookingDate = bookingDate;
     }
 
-    public String getCheckInDate() {
+    public LocalDate getCheckInDate() {
         return checkInDate;
     }
 
-    public void setCheckInDate(String checkInDate) {
+    public void setCheckInDate(LocalDate checkInDate) {
         this.checkInDate = checkInDate;
     }
 
-    public String getCheckOutDate() {
+    public LocalDate getCheckOutDate() {
         return checkOutDate;
     }
 
-    public void setCheckOutDate(String checkOutDate) {
+    public void setCheckOutDate(LocalDate checkOutDate) {
         this.checkOutDate = checkOutDate;
     }
 

@@ -54,7 +54,18 @@ public class DoublyLinkedList<T> implements ListInterface<T> {
 
     @Override
     public boolean add(int position, T newEntry) {
-        throw new UnsupportedOperationException("Not supported yet."); // Generated from nbfs://nbhost/SystemFileSystem/Templates/Classes/Code/GeneratedMethodBody
+        Node newNode = new Node(newEntry);
+
+        if (isEmpty()) {
+            firstNode = newNode;
+            lastNode = newNode;
+        } else {
+            lastNode.next = newNode;
+            newNode.previous = lastNode;
+            lastNode = newNode;
+        }
+        numberOfEntries++;
+        return true;
     }
 
     @Override
