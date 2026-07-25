@@ -4,9 +4,12 @@
  */
 package control;
 
-import entity.Booking;
 import adt.DoublyLinkedList;
+import adt.ListInterface;
+import entity.Booking;
 import entity.Room;
+import entity.Member;
+import dao.PriorityAllocationDAO;
 
 /**
  *
@@ -16,10 +19,39 @@ public class PriorityAllocationControl {
 
     private DoublyLinkedList<Booking> bookingList;
     private DoublyLinkedList<Room> roomList;
+    private DoublyLinkedList<Member> memberList;
 
     public PriorityAllocationControl() {
         bookingList = new DoublyLinkedList<>();
         roomList = new DoublyLinkedList<>();
+        memberList = new DoublyLinkedList<>();
+
+        PriorityAllocationDAO dao = new PriorityAllocationDAO();
+
+        // Load Members
+        Member[] members = dao.getMembers();
+
+        for (Member member : members) {
+            addMember(member);
+        }
+
+        // Load Rooms
+        Room[] rooms = dao.getRooms();
+
+        for (Room room : rooms) {
+            addRoom(room);
+        }
+
+        // Load Bookings
+        Booking[] bookings = dao.getBookings(members);
+
+        for (Booking booking : bookings) {
+            addBooking(booking);
+        }
+    }
+
+    public void addMember(Member newMember) {
+        memberList.add(newMember);
     }
 
     public void addBooking(Booking newBooking) {
@@ -29,6 +61,28 @@ public class PriorityAllocationControl {
 
     public void addRoom(Room newRoom) {
         roomList.add(newRoom);
+    }
+
+    public ListInterface<Booking> getBookingList() {
+        return bookingList;
+    }
+
+    public ListInterface<Room> getRoomList() {
+        return roomList;
+    }
+
+    public Member findMemberByID(String memberID) {
+
+        for (int i = 1; i <= memberList.getNumberOfEntries(); i++) {
+
+            Member member = memberList.getEntry(i);
+
+            if (member.getMemberID().equals(memberID)) {
+                return member;
+            }
+        }
+
+        return null;
     }
 
     private int getTierPriority(String loyaltyTier) {
@@ -45,7 +99,7 @@ public class PriorityAllocationControl {
         }
     }
 
-    private int comparePriority(Booking bookingA, Booking bookingB) {
+    public int comparePriority(Booking bookingA, Booking bookingB) {
 
         int tierA = getTierPriority(
                 bookingA.getMember().getLoyaltyTier()
@@ -140,6 +194,47 @@ public class PriorityAllocationControl {
                 }
             }
         }
+    }
+
+    public Room allocateNextRoom() {
+
+        for (int i = 1; i <= bookingList.getNumberOfEntries(); i++) {
+
+            Booking booking = bookingList.getEntry(i);
+
+            // Because the list is already sorted by priority,
+            // the first unallocated booking has the highest priority.
+            if (booking.getRoom() == null) {
+
+                Room vacantRoom = findVacantRoom();
+
+                if (vacantRoom != null) {
+
+                    booking.setRoom(vacantRoom);
+                    vacantRoom.setRoomStatus("Occupied");
+
+                    return vacantRoom;
+                }
+
+                return null;
+            }
+        }
+
+        return null;
+    }
+
+    public Booking findBookingByID(String bookingID) {
+
+        for (int i = 1; i <= bookingList.getNumberOfEntries(); i++) {
+
+            Booking booking = bookingList.getEntry(i);
+
+            if (booking.getBookingID().equals(bookingID)) {
+                return booking;
+            }
+        }
+
+        return null;
     }
 }
 //remider: allocation structure reorganizes itself automatically upon new insertions
