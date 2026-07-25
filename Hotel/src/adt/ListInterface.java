@@ -25,6 +25,8 @@ public interface ListInterface<T> {
     boolean isEmpty();
 
     int getNumberOfEntries();
+    
+    void swap(int position1, int position2);
 
     void clear();
 
