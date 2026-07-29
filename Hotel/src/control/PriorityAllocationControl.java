@@ -128,7 +128,8 @@ public class PriorityAllocationControl {
         // Same Tier and same Booking Date
         return 0;
     }
-
+    
+    //allocation structure reorganizes itself automatically upon new insertions
     public void reorganizePriority() {
 
         for (int i = 1; i <= bookingList.getNumberOfEntries(); i++) {
@@ -237,4 +238,4 @@ public class PriorityAllocationControl {
         return null;
     }
 }
-//remider: allocation structure reorganizes itself automatically upon new insertions
+

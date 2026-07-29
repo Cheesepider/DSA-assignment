@@ -81,7 +81,7 @@ public class PriorityAllocationUI {
         System.out.println("3. Display Waiting List");
         System.out.println("4. Search Booking");
         System.out.println("5. Generate Allocation Report");
-        System.out.println("5. Generate Allocation Report");
+        System.out.println("6. Generate Filtered Priority Report");
         System.out.println("0. Back to Main Menu");
         System.out.println("===============================================");
     }
@@ -103,8 +103,9 @@ public class PriorityAllocationUI {
             return;
         }
 
-        // System automatically records the current booking date and time
-        LocalDateTime bookingDate = LocalDateTime.now();
+        // System automatically records the current registration date and time
+        System.out.print("Enter Booking Date (yyyy-MM-dd): ");
+        LocalDate bookingDate = LocalDate.parse(scanner.nextLine());
 
         System.out.print("Enter Check-In Date (yyyy-MM-dd): ");
         LocalDate checkInDate = LocalDate.parse(scanner.nextLine());
@@ -112,11 +113,14 @@ public class PriorityAllocationUI {
         System.out.print("Enter Check-Out Date (yyyy-MM-dd): ");
         LocalDate checkOutDate = LocalDate.parse(scanner.nextLine());
 
+        LocalDateTime registrationTime = LocalDateTime.now();
+
         Booking newBooking = new Booking(
                 bookingID,
                 bookingDate,
                 checkInDate,
                 checkOutDate,
+                registrationTime,
                 member,
                 null
         );
@@ -125,6 +129,7 @@ public class PriorityAllocationUI {
 
         System.out.println("\nBooking request added successfully!");
         System.out.println("Booking Date: " + bookingDate);
+        System.out.println("Registration Time: " + registrationTime);
         System.out.println("Member: " + member.getMemberName());
         System.out.println("Loyalty Tier: " + member.getLoyaltyTier());
     }
@@ -192,6 +197,7 @@ public class PriorityAllocationUI {
             System.out.println("Member: " + member.getMemberName());
             System.out.println("Loyalty Tier: " + member.getLoyaltyTier());
             System.out.println("Booking Date: " + booking.getBookingDate());
+            System.out.println("Registration Time: " + booking.getRegistrationTime());
 
             if (booking.getRoom() == null) {
                 System.out.println("Room Status: Waiting for Allocation");
@@ -523,7 +529,7 @@ public class PriorityAllocationUI {
                     booking.getBookingID(),
                     booking.getMember().getMemberName(),
                     booking.getMember().getLoyaltyTier(),
-                    booking.getBookingDate(),
+                    booking.getRegistrationTime(),
                     booking.getCheckInDate(),
                     status);
         }

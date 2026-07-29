@@ -11,13 +11,13 @@ package entity;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 
-
 public class Booking {
 
     private String bookingID;
-    private LocalDateTime bookingDate;
+    private LocalDate bookingDate;
     private LocalDate checkInDate;
     private LocalDate checkOutDate;
+    private LocalDateTime registrationTime;
 
     private Member member;
     private Room room;
@@ -25,14 +25,19 @@ public class Booking {
     public Booking() {
     }
 
-    public Booking(String bookingID, LocalDateTime bookingDate,
-               LocalDate checkInDate, LocalDate checkOutDate,
-               Member member, Room room) {
+    public Booking(String bookingID,
+            LocalDate bookingDate,
+            LocalDate checkInDate,
+            LocalDate checkOutDate,
+            LocalDateTime registrationTime,
+            Member member,
+            Room room) {
 
         this.bookingID = bookingID;
         this.bookingDate = bookingDate;
         this.checkInDate = checkInDate;
         this.checkOutDate = checkOutDate;
+        this.registrationTime = registrationTime;
         this.member = member;
         this.room = room;
     }
@@ -45,11 +50,11 @@ public class Booking {
         this.bookingID = bookingID;
     }
 
-    public LocalDateTime getBookingDate() {
+    public LocalDate getBookingDate() {
         return bookingDate;
     }
 
-    public void setBookingDate(LocalDateTime bookingDate) {
+    public void setBookingDate(LocalDate bookingDate) {
         this.bookingDate = bookingDate;
     }
 
@@ -69,6 +74,14 @@ public class Booking {
         this.checkOutDate = checkOutDate;
     }
 
+    public LocalDateTime getRegistrationTime() {
+        return registrationTime;
+    }
+
+    public void setRegistrationTime(LocalDateTime registrationTime) {
+        this.registrationTime = registrationTime;
+    }
+
     public Member getMember() {
         return member;
     }
@@ -84,7 +97,7 @@ public class Booking {
     public void setRoom(Room room) {
         this.room = room;
     }
-    
+
     @Override
     public boolean equals(Object obj) {
         if (this == obj) {
@@ -100,13 +113,13 @@ public class Booking {
 
     @Override
     public String toString() {
-        return "Booking{" +
-                "bookingID='" + bookingID + '\'' +
-                ", bookingDate='" + bookingDate + '\'' +
-                ", checkInDate='" + checkInDate + '\'' +
-                ", checkOutDate='" + checkOutDate + '\'' +
-                ", member=" + member +
-                ", room=" + room +
-                '}';
+        return "Booking{"
+                + "bookingID='" + bookingID + '\''
+                + ", bookingDate='" + bookingDate + '\''
+                + ", checkInDate='" + checkInDate + '\''
+                + ", checkOutDate='" + checkOutDate + '\''
+                + ", member=" + member
+                + ", room=" + room
+                + '}';
     }
 }

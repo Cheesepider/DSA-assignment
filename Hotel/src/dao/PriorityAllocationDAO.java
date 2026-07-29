@@ -20,19 +20,15 @@ public class PriorityAllocationDAO {
 
         return new Member[]{
             new Member("M001", "Alice", "0123456789",
-                    "alice@email.com", "Elite", 1000),
-
+            "alice@email.com", "Elite", 1000),
             new Member("M002", "Bob", "0123456788",
-                    "bob@email.com", "Diamond", 800),
-
+            "bob@email.com", "Diamond", 800),
             new Member("M003", "Charlie", "0123456787",
-                    "charlie@email.com", "Platinum", 500),
-
+            "charlie@email.com", "Platinum", 500),
             new Member("M004", "David", "0123456786",
-                    "david@email.com", "Standard", 100),
-
+            "david@email.com", "Standard", 100),
             new Member("M005", "Emma", "0123456785",
-                    "emma@email.com", "Elite", 1200)
+            "emma@email.com", "Elite", 1200)
         };
     }
 
@@ -50,95 +46,95 @@ public class PriorityAllocationDAO {
     public Booking[] getBookings(Member[] members) {
 
         return new Booking[]{
-
             new Booking(
-                    "B001",
-                    LocalDateTime.now().minusHours(5),
-                    LocalDate.now().plusDays(3),
-                    LocalDate.now().plusDays(5),
-                    members[3],
-                    null
+            "B001",
+            LocalDate.of(2026, 7, 20), // Booking Date
+            LocalDate.of(2026, 8, 1), // Check-In
+            LocalDate.of(2026, 8, 3), // Check-Out
+            LocalDateTime.of(2026, 7, 20, 9, 0), // Registration Time
+            members[3],
+            null
             ),
-
             new Booking(
-                    "B002",
-                    LocalDateTime.now().minusHours(4),
-                    LocalDate.now().plusDays(2),
-                    LocalDate.now().plusDays(4),
-                    members[2],
-                    null
+            "B002",
+            LocalDate.of(2026, 7, 15), // Booking Date
+            LocalDate.of(2026, 8, 1), // Check-In
+            LocalDate.of(2026, 8, 3), // Check-Out
+            LocalDateTime.of(2026, 7, 15, 9, 0), // Registration Time
+            members[2],
+            null
             ),
-
             new Booking(
-                    "B003",
-                    LocalDateTime.now().minusHours(3),
-                    LocalDate.now().plusDays(5),
-                    LocalDate.now().plusDays(7),
-                    members[1],
-                    null
+            "B003",
+            LocalDate.of(2026, 7, 21), // Booking Date
+            LocalDate.of(2026, 8, 1), // Check-In
+            LocalDate.of(2026, 8, 3), // Check-Out
+            LocalDateTime.of(2026, 7, 21, 9, 0), // Registration Time
+            members[1],
+            null
             ),
-
             new Booking(
-                    "B004",
-                    LocalDateTime.now().minusHours(2),
-                    LocalDate.now().plusDays(1),
-                    LocalDate.now().plusDays(3),
-                    members[0],
-                    null
+            "B004",
+            LocalDate.of(2026, 7, 21), // Booking Date
+            LocalDate.of(2026, 8, 1), // Check-In
+            LocalDate.of(2026, 8, 3), // Check-Out
+            LocalDateTime.of(2026, 7, 21, 9, 30), // Registration Time
+            members[0],
+            null
             ),
-
             new Booking(
-                    "B005",
-                    LocalDateTime.now().minusHours(1),
-                    LocalDate.now().plusDays(4),
-                    LocalDate.now().plusDays(6),
-                    members[4],
-                    null
+            "B005",
+            LocalDate.of(2026, 7, 14), // Booking Date
+            LocalDate.of(2026, 8, 1), // Check-In
+            LocalDate.of(2026, 8, 3), // Check-Out
+            LocalDateTime.of(2026, 7, 14, 21, 15), // Registration Time
+            members[4],
+            null
             ),
-
             new Booking(
-                    "B006",
-                    LocalDateTime.now().minusMinutes(50),
-                    LocalDate.now().plusDays(6),
-                    LocalDate.now().plusDays(8),
-                    members[1],
-                    null
+            "B006",
+            LocalDate.of(2026, 7, 22), // Booking Date
+            LocalDate.of(2026, 8, 1), // Check-In
+            LocalDate.of(2026, 8, 3), // Check-Out
+            LocalDateTime.of(2026, 7, 22, 19, 0), // Registration Time
+            members[1],
+            null
             ),
-
             new Booking(
-                    "B007",
-                    LocalDateTime.now().minusMinutes(40),
-                    LocalDate.now().plusDays(7),
-                    LocalDate.now().plusDays(9),
-                    members[2],
-                    null
+            "B007",
+            LocalDate.of(2026, 7, 15), // Booking Date
+            LocalDate.of(2026, 8, 1), // Check-In
+            LocalDate.of(2026, 8, 3), // Check-Out
+            LocalDateTime.of(2026, 7, 15, 8, 0), // Registration Time
+            members[2],
+            null
             ),
-
             new Booking(
-                    "B008",
-                    LocalDateTime.now().minusMinutes(30),
-                    LocalDate.now().plusDays(2),
-                    LocalDate.now().plusDays(5),
-                    members[3],
-                    null
+            "B008",
+            LocalDate.of(2026, 7, 17), // Booking Date
+            LocalDate.of(2026, 8, 1), // Check-In
+            LocalDate.of(2026, 8, 3), // Check-Out
+            LocalDateTime.of(2026, 7, 17, 23, 49), // Registration Time
+            members[3],
+            null
             ),
-
             new Booking(
-                    "B009",
-                    LocalDateTime.now().minusMinutes(20),
-                    LocalDate.now().plusDays(3),
-                    LocalDate.now().plusDays(6),
-                    members[0],
-                    null
+            "B009",
+            LocalDate.of(2026, 7, 19), // Booking Date
+            LocalDate.of(2026, 8, 1), // Check-In
+            LocalDate.of(2026, 8, 3), // Check-Out
+            LocalDateTime.of(2026, 7, 19, 10, 4), // Registration Time
+            members[0],
+            null
             ),
-
             new Booking(
-                    "B010",
-                    LocalDateTime.now().minusMinutes(10),
-                    LocalDate.now().plusDays(5),
-                    LocalDate.now().plusDays(8),
-                    members[4],
-                    null
+            "B010",
+            LocalDate.of(2026, 7, 25), // Booking Date
+            LocalDate.of(2026, 8, 1), // Check-In
+            LocalDate.of(2026, 8, 3), // Check-Out
+            LocalDateTime.of(2026, 7, 25, 17, 0), // Registration Time
+            members[4],
+            null
             )
         };
     }
