@@ -103,7 +103,7 @@ public class PriorityAllocationUI {
             return;
         }
 
-        // System automatically records the current booking date and time
+        // System automatically records the current registration date and time
         System.out.print("Enter Booking Date (yyyy-MM-dd): ");
         LocalDate bookingDate = LocalDate.parse(scanner.nextLine());
 
@@ -529,7 +529,7 @@ public class PriorityAllocationUI {
                     booking.getBookingID(),
                     booking.getMember().getMemberName(),
                     booking.getMember().getLoyaltyTier(),
-                    booking.getBookingDate(),
+                    booking.getRegistrationTime(),
                     booking.getCheckInDate(),
                     status);
         }
