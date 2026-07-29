@@ -4,6 +4,10 @@
  */
 package control;
 
+/**
+ *
+ * @author jlohz
+ */
 import adt.DoublyLinkedList;
 import adt.ListInterface;
 import entity.Booking;
@@ -11,10 +15,6 @@ import entity.Room;
 import entity.Member;
 import dao.PriorityAllocationDAO;
 
-/**
- *
- * @author jlohz
- */
 public class PriorityAllocationControl {
 
     private DoublyLinkedList<Booking> bookingList;
@@ -116,19 +116,19 @@ public class PriorityAllocationControl {
             return -1;
         }
 
-        // Second priority: Earlier Booking Date
-        if (bookingA.getBookingDate().isBefore(
-                bookingB.getBookingDate())) {
+        // Second priority: If same tier, see who earlier(Registration Time)
+        if (bookingA.getRegistrationTime().isBefore(
+                bookingB.getRegistrationTime())) {
             return 1;
-        } else if (bookingA.getBookingDate().isAfter(
-                bookingB.getBookingDate())) {
+        } else if (bookingA.getRegistrationTime().isAfter(
+                bookingB.getRegistrationTime())) {
             return -1;
         }
 
-        // Same Tier and same Booking Date
+        //Same Tier and same Registration Time
         return 0;
     }
-    
+
     //allocation structure reorganizes itself automatically upon new insertions
     public void reorganizePriority() {
 
@@ -160,42 +160,42 @@ public class PriorityAllocationControl {
         return null;
     }
 
-    public boolean allocateRoom() {
-        Booking booking = bookingList.getEntry(1);
+//    public boolean allocateRoom() {
+//        Booking booking = bookingList.getEntry(1);
+//
+//        if (booking.getRoom() == null) {
+//            Room vacantRoom = findVacantRoom();
+//
+//            if (vacantRoom != null) {
+//                booking.setRoom(vacantRoom);
+//                vacantRoom.setRoomStatus("Occupied");
+//                return true;
+//            }
+//        }
+//        return false;
+//    }
 
-        if (booking.getRoom() == null) {
-            Room vacantRoom = findVacantRoom();
-
-            if (vacantRoom != null) {
-                booking.setRoom(vacantRoom);
-                vacantRoom.setRoomStatus("Occupied");
-                return true;
-            }
-        }
-        return false;
-    }
-
-    //to make sure non stop room assignment for other tiers.
-    //note: Higher loyalty tier guests receive priority access to vacant rooms.
-    public void allocateRooms() {
-
-        for (int i = 1; i <= bookingList.getNumberOfEntries(); i++) {
-
-            Booking booking = bookingList.getEntry(i);
-
-            if (booking.getRoom() == null) {
-
-                Room vacantRoom = findVacantRoom();
-
-                if (vacantRoom != null) {
-                    booking.setRoom(vacantRoom);
-                    vacantRoom.setRoomStatus("Occupied");
-                } else {
-                    break;
-                }
-            }
-        }
-    }
+//    //to make sure non stop room assignment for other tiers.
+//    //note: Higher loyalty tier guests receive priority access to vacant rooms.
+//    public void allocateRooms() {
+//
+//        for (int i = 1; i <= bookingList.getNumberOfEntries(); i++) {
+//
+//            Booking booking = bookingList.getEntry(i);
+//
+//            if (booking.getRoom() == null) {
+//
+//                Room vacantRoom = findVacantRoom();
+//
+//                if (vacantRoom != null) {
+//                    booking.setRoom(vacantRoom);
+//                    vacantRoom.setRoomStatus("Occupied");
+//                } else {
+//                    break;
+//                }
+//            }
+//        }
+//    }
 
     public Room allocateNextRoom() {
 
@@ -238,4 +238,3 @@ public class PriorityAllocationControl {
         return null;
     }
 }
-
