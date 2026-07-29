@@ -170,7 +170,6 @@ public class PriorityAllocationUI {
             System.out.println("Room ID: " + allocatedRoom.getRoomID());
 
         } else {
-
             System.out.println("\nNo vacant room is currently available.");
             System.out.println("Booking remains in the priority waiting list.");
         }
@@ -328,8 +327,47 @@ public class PriorityAllocationUI {
         System.out.printf("%-25s : %d%n", "Total Rooms", rooms.getNumberOfEntries());
         System.out.printf("%-25s : %d%n", "Occupied Rooms", occupiedRooms);
         System.out.printf("%-25s : %d%n", "Vacant Rooms", vacantRooms);
+        System.out.println();
+        System.out.println("=======================================================================================");
+        System.out.println("             CURRENT BOOKING SUMMARY");
+        System.out.println("=======================================================================================");
 
-        System.out.println("==============================================================");
+        System.out.printf("%-10s %-12s %-15s %-12s %-15s %-10s %-12s%n",
+                "Priority",
+                "Booking ID",
+                "Member",
+                "Tier",
+                "Booking Date",
+                "Room",
+                "Status");
+
+        System.out.println("---------------------------------------------------------------------------------------");
+
+        for (int i = 1; i <= bookings.getNumberOfEntries(); i++) {
+
+            Booking booking = bookings.getEntry(i);
+
+            String roomID;
+            String status;
+
+            if (booking.getRoom() == null) {
+                roomID = "-";
+                status = "Waiting";
+            } else {
+                roomID = booking.getRoom().getRoomID();
+                status = "Allocated";
+            }
+
+            System.out.printf("%-10d %-12s %-15s %-12s %-15s %-10s %-12s%n",
+                    i,
+                    booking.getBookingID(),
+                    booking.getMember().getMemberName(),
+                    booking.getMember().getLoyaltyTier(),
+                    booking.getBookingDate(),
+                    roomID,
+                    status);
+        }
+        System.out.println("=======================================================================================");
     }
 
     private void generateFilteredPriorityReport() {
