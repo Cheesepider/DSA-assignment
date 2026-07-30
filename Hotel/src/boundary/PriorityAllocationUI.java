@@ -17,6 +17,7 @@ import adt.DoublyLinkedList;
 import entity.Booking;
 import entity.Member;
 import entity.Room;
+import utility.ValidationUtility;
 
 public class PriorityAllocationUI {
 
@@ -26,45 +27,36 @@ public class PriorityAllocationUI {
     public void startUI() {
 
         int choice = -1;
-
         while (choice != 0) {
 
             displayMenu();
 
             System.out.print("Enter your choice: ");
-            choice = scanner.nextInt();
-            scanner.nextLine();
+            choice = ValidationUtility.inputChoice(scanner);
 
             switch (choice) {
 
                 case 1:
                     addBookingMenu();
                     break;
-
                 case 2:
                     allocateNextRoom();
                     break;
-
                 case 3:
                     displayWaitingList();
                     break;
-
                 case 4:
                     searchBooking();
                     break;
-
                 case 5:
                     generateAllocationReport();
                     break;
-
                 case 6:
                     generateFilteredPriorityReport();
                     break;
-
                 case 0:
                     System.out.println("Returning to Main Menu...");
                     break;
-
                 default:
                     System.out.println("Invalid choice. Please try again.");
             }
@@ -90,11 +82,9 @@ public class PriorityAllocationUI {
 
         System.out.println("\n--- Add Booking Request ---");
 
-        System.out.print("Enter Booking ID: ");
-        String bookingID = scanner.nextLine();
+        String bookingID = ValidationUtility.inputBookingID(scanner);
 
-        System.out.print("Enter Member ID: ");
-        String memberID = scanner.nextLine();
+        String memberID = ValidationUtility.inputMemberID(scanner);
 
         Member member = control.findMemberByID(memberID);
 
@@ -104,14 +94,14 @@ public class PriorityAllocationUI {
         }
 
         // System automatically records the current registration date and time
-        System.out.print("Enter Booking Date (yyyy-MM-dd): ");
-        LocalDate bookingDate = LocalDate.parse(scanner.nextLine());
+        LocalDate bookingDate = ValidationUtility.inputDate(scanner,
+                "Enter Booking Date (yyyy-MM-dd): ");
 
-        System.out.print("Enter Check-In Date (yyyy-MM-dd): ");
-        LocalDate checkInDate = LocalDate.parse(scanner.nextLine());
+        LocalDate checkInDate = ValidationUtility.inputDate(scanner,
+                "Enter Check-In Date (yyyy-MM-dd): ");
 
-        System.out.print("Enter Check-Out Date (yyyy-MM-dd): ");
-        LocalDate checkOutDate = LocalDate.parse(scanner.nextLine());
+        LocalDate checkOutDate = ValidationUtility.inputDate(scanner,
+                "Enter Check-Out Date (yyyy-MM-dd): ");
 
         LocalDateTime registrationTime = LocalDateTime.now();
 
@@ -211,8 +201,7 @@ public class PriorityAllocationUI {
 
         System.out.println("\n--- Search Booking ---");
 
-        System.out.print("Enter Booking ID: ");
-        String bookingID = scanner.nextLine();
+        String bookingID = ValidationUtility.inputBookingID(scanner);
 
         Booking booking = control.findBookingByID(bookingID);
 
@@ -279,15 +268,12 @@ public class PriorityAllocationUI {
                 case "Elite":
                     eliteCount++;
                     break;
-
                 case "Diamond":
                     diamondCount++;
                     break;
-
                 case "Platinum":
                     platinumCount++;
                     break;
-
                 case "Standard":
                     standardCount++;
                     break;
@@ -448,22 +434,18 @@ public class PriorityAllocationUI {
 
         switch (dateChoice) {
             case 1:
-                selectedDate = LocalDate.now();
+                selectedDate = LocalDate.now(); //today
                 break;
-
             case 2:
-                selectedDate = LocalDate.now().plusDays(1);
+                selectedDate = LocalDate.now().plusDays(1); //tomorrow
                 break;
-
             case 3:
-                System.out.print("Enter Check-In Date (YYYY-MM-DD): ");
-                selectedDate = LocalDate.parse(scanner.nextLine());
+                selectedDate = ValidationUtility.inputDate(scanner, //choose date
+                        "Enter Check-In Date (yyyy-MM-dd): ");
                 break;
-
             case 4:
-                selectedDate = null;
+                selectedDate = null; //semua
                 break;
-
             default:
                 System.out.println("Invalid choice.");
                 return;
@@ -531,8 +513,7 @@ public class PriorityAllocationUI {
         }
 
         System.out.println("-----------------------------------------------");
-        System.out.println("Total Matching Bookings: "
-                + filteredBookings.getNumberOfEntries());
+        System.out.println("Total Matching Bookings: " + filteredBookings.getNumberOfEntries());
         System.out.println("-----------------------------------------------");
 
         if (filteredBookings.isEmpty()) {
@@ -541,11 +522,11 @@ public class PriorityAllocationUI {
             return;
         }
 
-        System.out.printf("%-10s %-15s %-12s %-20s %-15s %-15s%n",
+        System.out.printf("%-13s %-15s %-12s %-20s %-15s %-15s%n",
                 "Booking ID",
                 "Member",
                 "Tier",
-                "Booking Time",
+                "Registration Time",
                 "Check-In",
                 "Status");
 
@@ -554,7 +535,6 @@ public class PriorityAllocationUI {
         for (int i = 1; i <= filteredBookings.getNumberOfEntries(); i++) {
 
             Booking booking = filteredBookings.getEntry(i);
-
             String status;
 
             if (booking.getRoom() == null) {
@@ -563,7 +543,7 @@ public class PriorityAllocationUI {
                 status = "Allocated";
             }
 
-            System.out.printf("%-10s %-15s %-12s %-20s %-15s %-15s%n",
+            System.out.printf("%-13s %-15s %-12s %-20s %-15s %-15s%n",
                     booking.getBookingID(),
                     booking.getMember().getMemberName(),
                     booking.getMember().getLoyaltyTier(),
