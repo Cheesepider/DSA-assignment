@@ -13,129 +13,131 @@ import entity.Member;
 import entity.Room;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import adt.ListInterface;
+import adt.DoublyLinkedList;
 
 public class PriorityAllocationDAO {
 
-    public Member[] getMembers() {
+    public ListInterface<Member> initializeMemberDAO() {
 
-        return new Member[]{
-            new Member("M001", "Alice", "0123456789",
-            "alice@email.com", "Elite", 1000),
-            new Member("M002", "Bob", "0123456788",
-            "bob@email.com", "Diamond", 800),
-            new Member("M003", "Charlie", "0123456787",
-            "charlie@email.com", "Platinum", 500),
-            new Member("M004", "David", "0123456786",
-            "david@email.com", "Standard", 100),
-            new Member("M005", "Emma", "0123456785",
-            "emma@email.com", "Elite", 1200)
-        };
+        ListInterface<Member> memberList = new DoublyLinkedList<>();
+
+        memberList.add(new Member("M001", "Alice", "0123456789", "alice@email.com", "Elite", 1000));
+        memberList.add(new Member("M002", "Bob", "0123456788", "bob@email.com", "Diamond", 800));
+        memberList.add(new Member("M003", "Charlie", "0123456787", "charlie@email.com", "Platinum", 500));
+        memberList.add(new Member("M004", "David", "0123456786", "david@email.com", "Standard", 100));
+        memberList.add(new Member("M005", "Emma", "0123456785", "emma@email.com", "Elite", 1200));
+
+        return memberList;
     }
 
-    public Room[] getRooms() {
+    public ListInterface<Room> initializeRoomDAO() {
 
-        return new Room[]{
-            new Room("R001", "Standard", "Vacant"),
-            new Room("R002", "Deluxe", "Vacant"),
-            new Room("R003", "Suite", "Vacant"),
-            new Room("R004", "Standard", "Vacant"),
-            new Room("R005", "Deluxe", "Vacant")
-        };
+        ListInterface<Room> roomList = new DoublyLinkedList<>();
+
+        roomList.add(new Room("R001", "Standard", "Vacant"));
+        roomList.add(new Room("R002", "Deluxe", "Vacant"));
+        roomList.add(new Room("R003", "Suite", "Vacant"));
+        roomList.add(new Room("R004", "Standard", "Vacant"));
+        roomList.add(new Room("R005", "Deluxe", "Vacant"));
+
+        return roomList;
     }
 
-    public Booking[] getBookings(Member[] members) {
+    public ListInterface<Booking> initializeBookingDAO(ListInterface<Member> members) {
 
-        return new Booking[]{
-            new Booking(
-            "B001",
-            LocalDate.of(2026, 7, 20), // Booking Date
-            LocalDate.of(2026, 8, 1), // Check-In
-            LocalDate.of(2026, 8, 3), // Check-Out
-            LocalDateTime.of(2026, 7, 20, 9, 0), // Registration Time
-            members[3],
-            null
-            ),
-            new Booking(
-            "B002",
-            LocalDate.of(2026, 7, 15), // Booking Date
-            LocalDate.of(2026, 8, 1), // Check-In
-            LocalDate.of(2026, 8, 3), // Check-Out
-            LocalDateTime.of(2026, 7, 15, 9, 0), // Registration Time
-            members[2],
-            null
-            ),
-            new Booking(
-            "B003",
-            LocalDate.of(2026, 7, 21), // Booking Date
-            LocalDate.of(2026, 8, 1), // Check-In
-            LocalDate.of(2026, 8, 3), // Check-Out
-            LocalDateTime.of(2026, 7, 21, 9, 0), // Registration Time
-            members[1],
-            null
-            ),
-            new Booking(
-            "B004",
-            LocalDate.of(2026, 7, 21), // Booking Date
-            LocalDate.of(2026, 8, 1), // Check-In
-            LocalDate.of(2026, 8, 3), // Check-Out
-            LocalDateTime.of(2026, 7, 21, 9, 30), // Registration Time
-            members[0],
-            null
-            ),
-            new Booking(
-            "B005",
-            LocalDate.of(2026, 7, 14), // Booking Date
-            LocalDate.of(2026, 8, 1), // Check-In
-            LocalDate.of(2026, 8, 3), // Check-Out
-            LocalDateTime.of(2026, 7, 14, 21, 15), // Registration Time
-            members[4],
-            null
-            ),
-            new Booking(
-            "B006",
-            LocalDate.of(2026, 7, 22), // Booking Date
-            LocalDate.of(2026, 8, 1), // Check-In
-            LocalDate.of(2026, 8, 3), // Check-Out
-            LocalDateTime.of(2026, 7, 22, 19, 0), // Registration Time
-            members[1],
-            null
-            ),
-            new Booking(
-            "B007",
-            LocalDate.of(2026, 7, 15), // Booking Date
-            LocalDate.of(2026, 8, 1), // Check-In
-            LocalDate.of(2026, 8, 3), // Check-Out
-            LocalDateTime.of(2026, 7, 15, 8, 0), // Registration Time
-            members[2],
-            null
-            ),
-            new Booking(
-            "B008",
-            LocalDate.of(2026, 7, 17), // Booking Date
-            LocalDate.of(2026, 8, 1), // Check-In
-            LocalDate.of(2026, 8, 3), // Check-Out
-            LocalDateTime.of(2026, 7, 17, 23, 49), // Registration Time
-            members[3],
-            null
-            ),
-            new Booking(
-            "B009",
-            LocalDate.of(2026, 7, 19), // Booking Date
-            LocalDate.of(2026, 8, 1), // Check-In
-            LocalDate.of(2026, 8, 3), // Check-Out
-            LocalDateTime.of(2026, 7, 19, 10, 4), // Registration Time
-            members[0],
-            null
-            ),
-            new Booking(
-            "B010",
-            LocalDate.of(2026, 7, 25), // Booking Date
-            LocalDate.of(2026, 8, 1), // Check-In
-            LocalDate.of(2026, 8, 3), // Check-Out
-            LocalDateTime.of(2026, 7, 25, 17, 0), // Registration Time
-            members[4],
-            null
-            )
-        };
+        ListInterface<Booking> bookingList = new DoublyLinkedList<>();
+
+        bookingList.add(new Booking(
+                "B001",
+                LocalDate.of(2026, 7, 20),
+                LocalDate.of(2026, 8, 1),
+                LocalDate.of(2026, 8, 3),
+                LocalDateTime.of(2026, 7, 20, 9, 0),
+                members.getEntry(4), // David
+                null));
+
+        bookingList.add(new Booking(
+                "B002",
+                LocalDate.of(2026, 7, 15),
+                LocalDate.of(2026, 8, 1),
+                LocalDate.of(2026, 8, 3),
+                LocalDateTime.of(2026, 7, 15, 9, 0),
+                members.getEntry(3), // Charlie
+                null));
+
+        bookingList.add(new Booking(
+                "B003",
+                LocalDate.of(2026, 7, 21),
+                LocalDate.of(2026, 8, 1),
+                LocalDate.of(2026, 8, 3),
+                LocalDateTime.of(2026, 7, 21, 9, 0),
+                members.getEntry(2), // Bob
+                null));
+
+        bookingList.add(new Booking(
+                "B004",
+                LocalDate.of(2026, 7, 21),
+                LocalDate.of(2026, 8, 1),
+                LocalDate.of(2026, 8, 3),
+                LocalDateTime.of(2026, 7, 21, 9, 30),
+                members.getEntry(1), // Alice
+                null));
+
+        bookingList.add(new Booking(
+                "B005",
+                LocalDate.of(2026, 7, 14),
+                LocalDate.of(2026, 8, 1),
+                LocalDate.of(2026, 8, 3),
+                LocalDateTime.of(2026, 7, 14, 21, 15),
+                members.getEntry(5), // Emma
+                null));
+
+        bookingList.add(new Booking(
+                "B006",
+                LocalDate.of(2026, 7, 22),
+                LocalDate.of(2026, 8, 1),
+                LocalDate.of(2026, 8, 3),
+                LocalDateTime.of(2026, 7, 22, 19, 0),
+                members.getEntry(2), // Bob
+                null));
+
+        bookingList.add(new Booking(
+                "B007",
+                LocalDate.of(2026, 7, 15),
+                LocalDate.of(2026, 8, 1),
+                LocalDate.of(2026, 8, 3),
+                LocalDateTime.of(2026, 7, 15, 8, 0),
+                members.getEntry(3), // Charlie
+                null));
+
+        bookingList.add(new Booking(
+                "B008",
+                LocalDate.of(2026, 7, 17),
+                LocalDate.of(2026, 8, 1),
+                LocalDate.of(2026, 8, 3),
+                LocalDateTime.of(2026, 7, 17, 23, 49),
+                members.getEntry(4), // David
+                null));
+
+        bookingList.add(new Booking(
+                "B009",
+                LocalDate.of(2026, 7, 19),
+                LocalDate.of(2026, 8, 1),
+                LocalDate.of(2026, 8, 3),
+                LocalDateTime.of(2026, 7, 19, 10, 4),
+                members.getEntry(1), // Alice
+                null));
+
+        bookingList.add(new Booking(
+                "B010",
+                LocalDate.of(2026, 7, 25),
+                LocalDate.of(2026, 8, 1),
+                LocalDate.of(2026, 8, 3),
+                LocalDateTime.of(2026, 7, 25, 17, 0),
+                members.getEntry(5), // Emma
+                null));
+
+        return bookingList;
     }
 }
