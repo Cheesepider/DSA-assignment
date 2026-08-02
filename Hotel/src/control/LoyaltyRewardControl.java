@@ -38,19 +38,19 @@ public class LoyaltyRewardControl {
 
         LoyaltyRewardDAO dao = new LoyaltyRewardDAO();
 
-        Member[] members = dao.getMembers();
-        for (Member member : members) {
-            memberList.add(member);
+        ListInterface<Member> members = dao.getMembers();
+        for (int i = 1; i <= members.getNumberOfEntries(); i++) {
+            memberList.add(members.getEntry(i));
         }
 
-        Reward[] rewards = dao.getRewards();
-        for (Reward reward : rewards) {
-            rewardList.add(reward);
+        ListInterface<Reward> rewards = dao.getRewards();
+        for (int i = 1; i <= rewards.getNumberOfEntries(); i++) {
+            rewardList.add(rewards.getEntry(i));
         }
 
-        PointsTransaction[] seedTransactions = dao.getSeedTransactions(members);
-        for (PointsTransaction transaction : seedTransactions) {
-            transactionList.add(transaction);
+        ListInterface<PointsTransaction> seedTransactions = dao.getSeedTransactions(members);
+        for (int i = 1; i <= seedTransactions.getNumberOfEntries(); i++) {
+            transactionList.add(seedTransactions.getEntry(i));
         }
     }
 
@@ -69,6 +69,24 @@ public class LoyaltyRewardControl {
             }
         }
         return null;
+    }
+
+    /**
+     * Registers a new member with a starting balance of 0 points and
+     * "Standard" tier. Returns false if the member ID is already in use.
+     */
+    public boolean addMember(String memberID, String memberName, String phoneNumber,
+            String email) {
+
+        if (findMemberByID(memberID) != null) {
+            return false;
+        }
+
+        Member newMember = new Member(memberID, memberName, phoneNumber,
+                email, "Standard", 0);
+
+        memberList.add(newMember);
+        return true;
     }
 
     /**
