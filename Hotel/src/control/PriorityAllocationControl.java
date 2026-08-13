@@ -17,9 +17,9 @@ import dao.PriorityAllocationDAO;
 
 public class PriorityAllocationControl {
 
-    private DoublyLinkedList<Booking> bookingList;
-    private DoublyLinkedList<Room> roomList;
-    private DoublyLinkedList<Member> memberList;
+    private ListInterface<Booking> bookingList = new DoublyLinkedList<>();
+    private ListInterface<Room> roomList = new DoublyLinkedList<>();
+    private ListInterface<Member> memberList = new DoublyLinkedList<>();
 
     public PriorityAllocationControl() {
 
