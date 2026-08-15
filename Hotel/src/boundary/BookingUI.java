@@ -5,7 +5,7 @@
 package boundary;
 
 import java.util.Scanner;
-
+import utility.VirtualClock;
 import control.BookingControl;
 import entity.Member;
 
@@ -19,7 +19,7 @@ public class BookingUI {
         while (choice != 8) {
             System.out.println("\n==========================================");
             System.out.println("   HOTEL BOOKING MODULE  ");
-            System.out.println("  " + util.VirtualClock.getInstance().toString());
+            System.out.println("  " + VirtualClock.getInstance().toString());
             System.out.println("==========================================\n");
             System.out.println("User Menu:");
             // print current member if exist

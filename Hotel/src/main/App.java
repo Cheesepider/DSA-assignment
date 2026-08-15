@@ -12,6 +12,7 @@ import entity.Room;
 import dao.RegistrationDAO;
 import boundary.BookingUI;
 import boundary.RegistrationUI;
+import utility.VirtualClock;
 
 public class App {
 
@@ -47,7 +48,7 @@ public class App {
         while (module != 3) {
             System.out.println("\n==========================================");
             System.out.println("   HOTEL MANAGEMENT SYSTEM   ");
-            System.out.println("  Time: " + util.VirtualClock.getInstance().toString());
+            System.out.println("  Time: " + VirtualClock.getInstance().toString());
             System.out.println("==========================================");
             System.out.println("Select Module:");
             System.out.println("1. Booking Module");

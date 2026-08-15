@@ -5,7 +5,7 @@
 package boundary;
 
 import java.util.Scanner;
-
+import utility.VirtualClock;
 import control.BookingControl;
 import control.RegistrationControl;
 import entity.Member;
@@ -22,7 +22,7 @@ public class RegistrationUI {
         while (choice != 10) {
             System.out.println("\n==========================================");
             System.out.println("   HOTEL REGISTRATION MODULE  ");
-            System.out.println("  " + util.VirtualClock.getInstance().toString());
+            System.out.println("  " + VirtualClock.getInstance().toString());
             System.out.println("  Period: " + RegistrationControl.getCurrentTimePeriod());
             System.out.println("==========================================\n");
             System.out.println("Customer Registration Menu:");

@@ -5,7 +5,7 @@
 package control;
 
 import java.util.Objects;
-
+import utility.VirtualClock;
 import adt.ListInterface;
 import entity.Member;
 import entity.Booking;
@@ -22,7 +22,7 @@ public class RegistrationControl {
     }
 
     public static TimePeriod getCurrentTimePeriod() {
-        java.time.LocalTime nowTime = util.VirtualClock.getInstance().time();
+        java.time.LocalTime nowTime = VirtualClock.getInstance().time();
         if (nowTime.isBefore(java.time.LocalTime.of(12, 0))) {
             return TimePeriod.CHECKOUT;
         } else if (nowTime.isBefore(java.time.LocalTime.of(15, 0))) {
@@ -90,7 +90,7 @@ public class RegistrationControl {
     }
 
     public static void runNoShowCheck() {
-        LocalDate today = util.VirtualClock.getInstance().today();
+        LocalDate today = VirtualClock.getInstance().today();
         for (int i = 1; i <= App.bookingList.getNumberOfEntries(); i++) {
             Booking b = App.bookingList.getEntry(i);
             if (b.getBookingStatus() == Booking.BookingStatus.CONFIRMED && b.getCheckInDate().isBefore(today)) {
@@ -150,7 +150,7 @@ public class RegistrationControl {
         }
 
         Booking todayBooking = null;
-        LocalDate today = util.VirtualClock.getInstance().today();
+        LocalDate today = VirtualClock.getInstance().today();
         for (int i = 1; i <= App.bookingList.getNumberOfEntries(); i++) {
             Booking b = App.bookingList.getEntry(i);
             if (b.getMember().getMemberID() == member.getMemberID() &&
@@ -245,7 +245,7 @@ public class RegistrationControl {
             return;
         }
 
-        LocalDate today = util.VirtualClock.getInstance().today();
+        LocalDate today = VirtualClock.getInstance().today();
         Booking booking = null;
         for (int i = 1; i <= App.bookingList.getNumberOfEntries(); i++) {
             Booking b = App.bookingList.getEntry(i);
@@ -364,7 +364,7 @@ public class RegistrationControl {
         Room room = booking.getRoom();
         LocalDate checkIn = booking.getCheckInDate();
         LocalDate scheduledCheckOut = booking.getCheckOutDate();
-        LocalDate actualCheckOut = util.VirtualClock.getInstance().today();
+        LocalDate actualCheckOut = VirtualClock.getInstance().today();
         double rate = (room != null) ? room.getRoomType().getBaseRate() : 0.0;
 
         System.out.println(

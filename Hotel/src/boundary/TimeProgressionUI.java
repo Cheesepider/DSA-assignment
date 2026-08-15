@@ -5,7 +5,7 @@
 package boundary;
 
 import java.util.Scanner;
-import util.VirtualClock;
+import utility.VirtualClock;
 
 public class TimeProgressionUI {
 
