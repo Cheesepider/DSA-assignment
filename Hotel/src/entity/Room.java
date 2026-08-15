@@ -4,46 +4,95 @@
  */
 package entity;
 
+import java.util.concurrent.atomic.AtomicInteger;
+
 /**
  *
  * @author jlohz
  */
 public class Room {
+    private static final AtomicInteger roomIDCounter = new AtomicInteger(1);
 
-    private String roomID;
-    private String roomType;
-    private String roomStatus;
+    private int roomID;
+    private String roomNumber;
+    private RoomType roomType;
+    private RoomStatus roomStatus;
+
+    // added enum class for room status
+    public enum RoomStatus {
+        Dirty,
+        Cleaning_In_Progress,
+        Inspected,
+        Ready_for_Check_In,
+        Occupied,
+    }
+
+    public enum RoomType {
+        SINGLE(100.0), // room types (room rate)
+        DOUBLE(150.0),
+        SUITE(300.0);
+
+        private final double baseRate;
+
+        RoomType(double baseRate) {
+            this.baseRate = baseRate;
+        }
+
+        public double getBaseRate() {
+            return baseRate;
+        }
+    }
 
     public Room() {
     }
 
-    public Room(String roomID, String roomType, String roomStatus) {
-        this.roomID = roomID;
+    // new constructor for default room status
+    public Room(String roomNumber, RoomType roomType) {
+        this.roomID = roomIDCounter.getAndIncrement();
+        this.roomNumber = roomNumber;
+        this.roomType = roomType;
+        this.roomStatus = RoomStatus.Ready_for_Check_In; // Default status
+    }
+
+    // modified full constructor from string to enum for room status, and counter for ID
+    public Room(String roomNumber, RoomType roomType, RoomStatus roomStatus) {
+        this.roomID = roomIDCounter.getAndIncrement();
+        this.roomNumber = roomNumber;
         this.roomType = roomType;
         this.roomStatus = roomStatus;
     }
 
-    public String getRoomID() {
+    // modified string > int
+    public int getRoomID() {
         return roomID;
     }
 
-    public void setRoomID(String roomID) {
+    // modified
+    public void setRoomID(int roomID) {
         this.roomID = roomID;
     }
 
-    public String getRoomType() {
+    public String getRoomNumber() {
+        return roomNumber;
+    }
+
+    public void setRoomNumber(String roomNumber) {
+        this.roomNumber = roomNumber;
+    }
+
+    public RoomType getRoomType() {
         return roomType;
     }
 
-    public void setRoomType(String roomType) {
+    public void setRoomType(RoomType roomType) {
         this.roomType = roomType;
     }
 
-    public String getRoomStatus() {
+    public RoomStatus getRoomStatus() {
         return roomStatus;
     }
 
-    public void setRoomStatus(String roomStatus) {
+    public void setRoomStatus(RoomStatus roomStatus) {
         this.roomStatus = roomStatus;
     }
 
@@ -51,16 +100,9 @@ public class Room {
     public String toString() {
         return "Room{" +
                 "roomID='" + roomID + '\'' +
+                ", roomNumber='" + roomNumber + '\'' +
                 ", roomType='" + roomType + '\'' +
                 ", roomStatus='" + roomStatus + '\'' +
                 '}';
-    }
-    
-    public boolean equals(Object obj) {
-        if (this == obj) return true;
-        if (obj == null || getClass() != obj.getClass()) 
-            return false;
-        Room otherRoom = (Room) obj;
-        return this.roomID.equals(otherRoom.roomID);
     }
 }

@@ -4,27 +4,48 @@
  */
 package entity;
 
+import java.util.concurrent.atomic.AtomicInteger;
+
 /**
  *
  * @author jlohz
  */
 public class Member {
+    private static final AtomicInteger memberIDCounter = new AtomicInteger(1);
 
-    private String memberID;
+    public enum LoyaltyTier {
+        Regular,        // default
+        Platinum,       
+        Diamond,
+        Elite           // highest tier
+    }
+
+    private int memberID;
     private String memberName;
     private String phoneNumber;
-    private String email;
-    private String loyaltyTier;
-    private int loyaltyPoints;
+    private String email; 
+    private LoyaltyTier loyaltyTier; // vip status thing
+    private int loyaltyPoints;      // points accumulated for loyalty program 
 
     public Member() {
     }
 
-    public Member(String memberID, String memberName,
-                  String phoneNumber, String email,
-                  String loyaltyTier, int loyaltyPoints) {
+    // new constructor for default loyalty tier and points
+    public Member(String memberName, String phoneNumber, String email) {
+        this.memberID = memberIDCounter.getAndIncrement();
+        this.memberName = memberName;
+        this.phoneNumber = phoneNumber;
+        this.email = email;
+        this.loyaltyTier = LoyaltyTier.Regular; // default loyalty tier
+        this.loyaltyPoints = 0; // Default points
+    }
 
-        this.memberID = memberID;
+    // modified full constructor to include memberID assignment and enum for loyalty tier
+    public Member(String memberName,
+                  String phoneNumber, String email,
+                  LoyaltyTier loyaltyTier, int loyaltyPoints) {
+
+        this.memberID = memberIDCounter.getAndIncrement();
         this.memberName = memberName;
         this.phoneNumber = phoneNumber;
         this.email = email;
@@ -32,11 +53,11 @@ public class Member {
         this.loyaltyPoints = loyaltyPoints;
     }
 
-    public String getMemberID() {
+    public int getMemberID() {
         return memberID;
     }
 
-    public void setMemberID(String memberID) {
+    public void setMemberID(int memberID) {
         this.memberID = memberID;
     }
 
@@ -64,11 +85,11 @@ public class Member {
         this.email = email;
     }
 
-    public String getLoyaltyTier() {
+    public LoyaltyTier getLoyaltyTier() {
         return loyaltyTier;
     }
 
-    public void setLoyaltyTier(String loyaltyTier) {
+    public void setLoyaltyTier(LoyaltyTier loyaltyTier) {
         this.loyaltyTier = loyaltyTier;
     }
 
@@ -79,19 +100,7 @@ public class Member {
     public void setLoyaltyPoints(int loyaltyPoints) {
         this.loyaltyPoints = loyaltyPoints;
     }
-    
-    @Override
-    public boolean equals(Object obj) {
-        if (this == obj) {
-            return true;
-        }
-        if (obj == null || getClass() != obj.getClass()) {
-            return false;
-        }
 
-        Member other = (Member) obj;
-        return memberID.equals(other.memberID);
-    }
     @Override
     public String toString() {
         return "Member{" +

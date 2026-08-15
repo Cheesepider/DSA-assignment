@@ -4,20 +4,30 @@
  */
 package entity;
 
-/**
- *
- * @author jlohz
- */
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.concurrent.atomic.AtomicInteger;
+
 
 public class Booking {
 
-    private String bookingID;
+    public enum BookingStatus {
+        PENDING,
+        CONFIRMED,
+        CHECKED_IN,
+        CHECKED_OUT,
+        CANCELLED,
+        COMPLETED
+    }
+
+    private static final AtomicInteger bookingIDCounter = new AtomicInteger(1);
+
+    private int bookingID;
     private LocalDate bookingDate;
     private LocalDate checkInDate;
     private LocalDate checkOutDate;
     private LocalDateTime registrationTime;
+    private BookingStatus bookingStatus;
 
     private Member member;
     private Room room;
@@ -25,28 +35,41 @@ public class Booking {
     public Booking() {
     }
 
-    public Booking(String bookingID,
-            LocalDate bookingDate,
-            LocalDate checkInDate,
-            LocalDate checkOutDate,
-            LocalDateTime registrationTime,
-            Member member,
-            Room room) {
+    // partial constructor
+    public Booking(LocalDate bookingDate, LocalDate checkInDate,
+                    LocalDate checkOutDate, LocalDateTime registrationTime,
+                    BookingStatus bookingStatus, Member member, Room room) {
+
+        this.bookingID = bookingIDCounter.getAndIncrement();
+        this.bookingDate = bookingDate;
+        this.checkInDate = checkInDate;
+        this.checkOutDate = checkOutDate;
+        this.registrationTime = registrationTime;
+        this.bookingStatus = bookingStatus;
+        this.member = member;
+        this.room = room;
+    }
+
+    // full constructor for Booking class
+    public Booking(int bookingID, LocalDate bookingDate,
+                   LocalDate checkInDate, LocalDate checkOutDate,
+                   LocalDateTime registrationTime, BookingStatus bookingStatus, Member member, Room room) {
 
         this.bookingID = bookingID;
         this.bookingDate = bookingDate;
         this.checkInDate = checkInDate;
         this.checkOutDate = checkOutDate;
         this.registrationTime = registrationTime;
+        this.bookingStatus = bookingStatus;
         this.member = member;
         this.room = room;
     }
 
-    public String getBookingID() {
+    public int getBookingID() {
         return bookingID;
     }
 
-    public void setBookingID(String bookingID) {
+    public void setBookingID(int bookingID) {
         this.bookingID = bookingID;
     }
 
@@ -82,6 +105,14 @@ public class Booking {
         this.registrationTime = registrationTime;
     }
 
+    public BookingStatus getBookingStatus() {
+        return bookingStatus;
+    }
+
+    public void setBookingStatus(BookingStatus bookingStatus) {
+        this.bookingStatus = bookingStatus;
+    }
+
     public Member getMember() {
         return member;
     }
@@ -99,27 +130,16 @@ public class Booking {
     }
 
     @Override
-    public boolean equals(Object obj) {
-        if (this == obj) {
-            return true;
-        }
-
-        if (obj == null || getClass() != obj.getClass()) {
-            return false;
-        }
-        Booking other = (Booking) obj;
-        return bookingID.equals(other.bookingID);
-    }
-
-    @Override
     public String toString() {
-        return "Booking{"
-                + "bookingID='" + bookingID + '\''
-                + ", bookingDate='" + bookingDate + '\''
-                + ", checkInDate='" + checkInDate + '\''
-                + ", checkOutDate='" + checkOutDate + '\''
-                + ", member=" + member
-                + ", room=" + room
-                + '}';
+        return "Booking{" +
+                "bookingID='" + bookingID + '\'' +
+                ", bookingDate='" + bookingDate + '\'' +
+                ", checkInDate='" + checkInDate + '\'' +
+                ", checkOutDate='" + checkOutDate + '\'' +
+                ", registrationTime='" + registrationTime + '\'' +
+                ", bookingStatus=" + bookingStatus +
+                ", member=" + member +
+                ", room=" + room +
+                '}';
     }
 }
