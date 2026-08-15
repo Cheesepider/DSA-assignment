@@ -4,7 +4,6 @@
  */
 package adt;
 
-import entity.Booking;
 
 /**
  *
@@ -274,18 +273,6 @@ public class DoublyLinkedList<T> implements ListInterface<T> {
         numberOfEntries = 0;
     }
     
-    @Override
-    public boolean equals(Object obj) {
-        if (this == obj) {
-            return true;
-        }
-
-        if (obj == null || getClass() != obj.getClass()) {
-            return false;
-        }
-        Booking other = (Booking) obj;
-        return bookingID.equals(other.bookingID);
-    }
 
     //node swapping based on priority, but just swap the data(.data) 
     @Override
