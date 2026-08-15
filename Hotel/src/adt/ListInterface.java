@@ -30,4 +30,5 @@ public interface ListInterface<T> {
 
     void clear();
 
+    void printList();
 }

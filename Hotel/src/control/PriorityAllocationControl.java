@@ -8,87 +8,18 @@ package control;
  *
  * @author jlohz
  */
-import adt.DoublyLinkedList;
-import adt.ListInterface;
 import entity.Booking;
-import entity.Room;
 import entity.Member;
-import dao.PriorityAllocationDAO;
+import entity.Room;
+import main.App;
+import adt.ListInterface;
 
 public class PriorityAllocationControl {
 
-    private ListInterface<Booking> bookingList = new DoublyLinkedList<>();
-    private ListInterface<Room> roomList = new DoublyLinkedList<>();
-    private ListInterface<Member> memberList = new DoublyLinkedList<>();
-
-    public PriorityAllocationControl() {
-
-        PriorityAllocationDAO dao = new PriorityAllocationDAO();
-
-        memberList = (DoublyLinkedList<Member>) dao.initializeMemberDAO();
-        roomList = (DoublyLinkedList<Room>) dao.initializeRoomDAO();
-        bookingList = (DoublyLinkedList<Booking>) dao.initializeBookingDAO(memberList);
-
-        reorganizePriority();
-    }
-
-    public void addMember(Member newMember) {
-        memberList.add(newMember);
-    }
-
-    public void addBooking(Booking newBooking) {
-        bookingList.add(newBooking);
-        reorganizePriority();
-    }
-
-    public void addRoom(Room newRoom) {
-        roomList.add(newRoom);
-    }
-
-    public ListInterface<Booking> getBookingList() {
-        return bookingList;
-    }
-
-    public ListInterface<Room> getRoomList() {
-        return roomList;
-    }
-
-    public Member findMemberByID(String memberID) {
-
-        for (int i = 1; i <= memberList.getNumberOfEntries(); i++) {
-
-            Member member = memberList.getEntry(i);
-
-            if (member.getMemberID().equals(memberID)) {
-                return member;
-            }
-        }
-        return null;
-    }
-
-    private int getTierPriority(String loyaltyTier) {
-        if (loyaltyTier.equals("Elite")) {
-            return 4;
-        } else if (loyaltyTier.equals("Diamond")) {
-            return 3;
-        } else if (loyaltyTier.equals("Platinum")) {
-            return 2;
-        } else if (loyaltyTier.equals("Standard")) {
-            return 1;
-        } else {
-            throw new IllegalArgumentException("Invalid loyalty tier");
-        }
-    }
-
     public int comparePriority(Booking bookingA, Booking bookingB) {
 
-        int tierA = getTierPriority(
-                bookingA.getMember().getLoyaltyTier()
-        );
-
-        int tierB = getTierPriority(
-                bookingB.getMember().getLoyaltyTier()
-        );
+        int tierA = bookingA.getMember().getLoyaltyTier().ordinal();
+        int tierB = bookingB.getMember().getLoyaltyTier().ordinal();
 
         // First priority: Loyalty Tier
         if (tierA > tierB) {
@@ -97,7 +28,7 @@ public class PriorityAllocationControl {
             return -1;
         }
 
-        // Second priority: If same tier, see who earlier(Registration Time)
+        // Second priority: Earlier Registration Time
         if (bookingA.getRegistrationTime().isBefore(
                 bookingB.getRegistrationTime())) {
             return 1;
@@ -106,78 +37,175 @@ public class PriorityAllocationControl {
             return -1;
         }
 
-        //Same Tier and same Registration Time
         return 0;
     }
 
-    //allocation structure reorganizes itself automatically upon new insertions
     public void reorganizePriority() {
 
-        for (int i = 1; i <= bookingList.getNumberOfEntries(); i++) {
+        ListInterface<Booking> queue = App.bookingRequestsQueue;
 
-            for (int j = i + 1; j <= bookingList.getNumberOfEntries(); j++) {
+        for (int i = 1; i <= queue.getNumberOfEntries(); i++) {
 
-                Booking bookingA = bookingList.getEntry(i);
-                Booking bookingB = bookingList.getEntry(j);
+            for (int j = i + 1; j <= queue.getNumberOfEntries(); j++) {
+
+                Booking bookingA = queue.getEntry(i);
+                Booking bookingB = queue.getEntry(j);
 
                 if (comparePriority(bookingA, bookingB) < 0) {
-                    bookingList.swap(i, j);
+
+                    queue.replace(i, bookingB);
+                    queue.replace(j, bookingA);
                 }
             }
         }
     }
 
-    private Room findVacantRoom() {
+    private Room findAvailableRoom(Booking request) {
 
-        for (int i = 1; i <= roomList.getNumberOfEntries(); i++) {
+        Room.RoomType requestedType = request.getRoom().getRoomType();
 
-            Room room = roomList.getEntry(i);
+        for (int i = 1; i <= App.roomList.getNumberOfEntries(); i++) {
 
-            if (room.getRoomStatus().equals("Vacant")) {
+            Room room = App.roomList.getEntry(i);
+
+            if (room.getRoomType() != requestedType) {
+                continue;
+            }
+
+            boolean hasOverlap = false;
+
+            for (int j = 1; j <= App.bookingList.getNumberOfEntries(); j++) {
+
+                Booking existingBooking = App.bookingList.getEntry(j);
+
+                if (existingBooking.getRoom() != null
+                        && existingBooking.getRoom().getRoomID() == room.getRoomID()
+                        && existingBooking.getBookingStatus()
+                        != Booking.BookingStatus.CANCELLED) {
+
+                    boolean overlap
+                            = request.getCheckInDate()
+                                    .isBefore(existingBooking.getCheckOutDate())
+                            && request.getCheckOutDate()
+                                    .isAfter(existingBooking.getCheckInDate());
+
+                    if (overlap) {
+                        hasOverlap = true;
+                        break;
+                    }
+                }
+            }
+            if (!hasOverlap) {
                 return room;
             }
         }
-
         return null;
     }
 
-    public Room allocateNextRoom() {
+    public Booking allocateNextRoom() {
 
-        for (int i = 1; i <= bookingList.getNumberOfEntries(); i++) {
+        reorganizePriority();
 
-            Booking booking = bookingList.getEntry(i);
+        for (int i = 1;
+                i <= App.bookingRequestsQueue.getNumberOfEntries();
+                i++) {
 
-            // Because the list is already sorted by priority,
-            // the first unallocated booking has the highest priority.
-            if (booking.getRoom() == null) {
+            Booking request = App.bookingRequestsQueue.getEntry(i);
 
-                Room vacantRoom = findVacantRoom();
+            Room availableRoom = findAvailableRoom(request);
 
-                if (vacantRoom != null) {
+            if (availableRoom != null) {
 
-                    booking.setRoom(vacantRoom);
-                    vacantRoom.setRoomStatus("Occupied");
+                request.setRoom(availableRoom);
+                request.setBookingStatus(
+                        Booking.BookingStatus.CONFIRMED);
 
-                    return vacantRoom;
-                }
+                App.bookingList.add(request);
+                App.bookingRequestsQueue.remove(i);
 
-                return null;
+                return request;
             }
         }
 
         return null;
     }
 
-    public Booking findBookingByID(String bookingID) {
+    //Let UI see/refer Priority waiting list
+    public ListInterface<Booking> getWaitingList() {
+        return App.bookingRequestsQueue;
+    }
 
-        for (int i = 1; i <= bookingList.getNumberOfEntries(); i++) {
+    //to search 2 types, the confirmed bookings and the bookings that requested but still waiting.
+    public Booking findBookingByID(int bookingID) {
 
-            Booking booking = bookingList.getEntry(i);
+        // Search confirmed bookings
+        for (int i = 1; i <= App.bookingList.getNumberOfEntries(); i++) {
 
-            if (booking.getBookingID().equals(bookingID)) {
+            Booking booking = App.bookingList.getEntry(i);
+
+            if (booking.getBookingID() == bookingID) {
                 return booking;
             }
         }
+
+        // Search priority waiting list
+        for (int i = 1; i <= App.bookingRequestsQueue.getNumberOfEntries(); i++) {
+
+            Booking booking = App.bookingRequestsQueue.getEntry(i);
+
+            if (booking.getBookingID() == bookingID) {
+                return booking;
+            }
+        }
+
         return null;
+    }
+
+    //Below are counters for displaying in report as summary before displaying table
+    ////////////////////////////////////////////////////////////////////////////
+    /// @return 
+    public int countWaitingBookings() {
+        return App.bookingRequestsQueue.getNumberOfEntries();
+    }
+
+    public int countConfirmedBookings() {
+        return App.bookingList.getNumberOfEntries();
+    }
+
+    public int countWaitingBookingsByTier(Member.LoyaltyTier tier) {
+
+        int count = 0;
+
+        for (int i = 1;
+                i <= App.bookingRequestsQueue.getNumberOfEntries();
+                i++) {
+
+            Booking booking
+                    = App.bookingRequestsQueue.getEntry(i);
+
+            if (booking.getMember().getLoyaltyTier() == tier) {
+                count++;
+            }
+        }
+
+        return count;
+    }
+
+    public int countRoomsByType(Room.RoomType type) {
+
+        int count = 0;
+
+        for (int i = 1;
+                i <= App.roomList.getNumberOfEntries();
+                i++) {
+
+            Room room = App.roomList.getEntry(i);
+
+            if (room.getRoomType() == type) {
+                count++;
+            }
+        }
+
+        return count;
     }
 }

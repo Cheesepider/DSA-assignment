@@ -4,9 +4,12 @@
  */
 package adt;
 
+import entity.Booking;
+
 /**
  *
  * @author jlohz
+ * @param <T>
  */
 public class DoublyLinkedList<T> implements ListInterface<T> {
 
@@ -40,8 +43,9 @@ public class DoublyLinkedList<T> implements ListInterface<T> {
     @Override
     public boolean add(T newEntry) {
         Node newNode = new Node(newEntry);
-        if (isEmpty()) {
+        if (isEmpty()|| firstNode == null) {
             firstNode = newNode;
+            lastNode = newNode;
         } else {
             lastNode.next = newNode;
             newNode.previous = lastNode;
@@ -52,75 +56,204 @@ public class DoublyLinkedList<T> implements ListInterface<T> {
     }
 
     @Override
-    public boolean add(int position, T newEntry) {
-        Node newNode = new Node(newEntry);
+    public boolean add(int position, T newEntry) { // adds entry at specified position in the DoublyLinkedList
+        // returns true if successful, false if position is invalid
+        boolean added = false;
 
-        if (isEmpty()) {
-            firstNode = newNode;
-            lastNode = newNode;
-        } else {
-            lastNode.next = newNode;
-            newNode.previous = lastNode;
-            lastNode = newNode;
+        // check if position is valid: >=1 and <= numberOfEntries + 1
+        if (checkPositionValid(position, numberOfEntries + 1)) {
+            // here on all cases are valid position
+            // position can be 1(beginning), numberOfEntries + 1(end), or in between
+            // list can be empty or not empty
+            if (isEmpty()) {
+                // if list is empty, add newEntry as firstNode and lastNode
+                firstNode = new Node(newEntry);
+                lastNode = firstNode;
+                added = true;
+                numberOfEntries++;
+            } else if (position == 1) {
+                // if position is 1, add newEntry as firstNode
+                Node newNode = new Node(newEntry, firstNode, null);
+                firstNode.previous = newNode;
+                firstNode = newNode;
+                added = true;
+                numberOfEntries++;
+            } else if (position == numberOfEntries + 1) {
+                // if position is numberOfEntries + 1, add newEntry as lastNode
+                Node newNode = new Node(newEntry, null, lastNode);
+                lastNode.next = newNode;
+                lastNode = newNode;
+                added = true;
+                numberOfEntries++;
+            } else {
+                // if position is in between, add newEntry at specified position
+                // to increase efficiency, we can check if position is closer to firstNode or lastNode
+                if (position <= numberOfEntries / 2) {
+                    // position is closer to firstNode, traverse from front
+                    Node currentNode = firstNode;
+                    for (int i = 1; i < position - 1; i++) {
+                        currentNode = currentNode.next; // traverse to the node before the specified position
+                    }
+                    Node newNode = new Node(newEntry, currentNode.next, currentNode);
+                    currentNode.next.previous = newNode;
+                    currentNode.next = newNode;
+                    added = true;
+                    numberOfEntries++;
+                } else {
+                    // position is closer to lastNode, traverse from behind
+                    Node currentNode = lastNode;
+                    for (int i = numberOfEntries; i > position - 1; i--) {
+                        currentNode = currentNode.previous; // traverse to the node before the specified position
+                    }
+                    Node newNode = new Node(newEntry, currentNode.next, currentNode);
+                    currentNode.next.previous = newNode;
+                    currentNode.next = newNode;
+                    added = true;
+                    numberOfEntries++;
+                }
+            }
         }
-        numberOfEntries++;
-        return true;
+        return added;
     }
 
     @Override
     public T remove(int position) {
-        if (position >= 1 && position <= numberOfEntries) {
-            Node nodeToRemove = firstNode;
-            for (int i = 1; i < position; i++) {
-                nodeToRemove = nodeToRemove.next;
-            }
-            T result = nodeToRemove.data;
-            if (position == 1) {
+    // v1, traverse from front to back
+        // removes entry at specified position in the DoublyLinkedList
+        // returns the removed entry if successful, null if position is invalid
+
+        T removedData = null;
+        // check if position is valid: >=1 and <= numberOfEntries
+        if (checkPositionValid(position, numberOfEntries)){
+            //position is valid, proceed to remove entry at specified position
+            if (numberOfEntries == 1) { // if only one node exist
+                removedData = firstNode.data;
+                clear();
+            } else if (position == 1) { // if node is firstnode
+                removedData = firstNode.data;
                 firstNode = firstNode.next;
-                if (firstNode != null) {
-                    firstNode.previous = null;
-                } else {
-                    lastNode = null;
-                }
-            } else if (position == numberOfEntries) {
+                firstNode.previous = null;
+                numberOfEntries --;
+            } else if (position == numberOfEntries) { // if node is last node
+                removedData = lastNode.data;
                 lastNode = lastNode.previous;
-                if (lastNode != null) {
-                    lastNode.next = null;
-                } else {
-                    firstNode = null;
-                }
+                lastNode.next = null;
+                numberOfEntries --;
             } else {
-                Node nodeBefore = nodeToRemove.previous;
-                Node nodeAfter = nodeToRemove.next;
-                nodeBefore.next = nodeAfter;
-                nodeAfter.previous = nodeBefore;
+                //position is in between, remove entry at specified position
+                // to increase efficiency, we can check if position is closer to firstNode or lastNode
+                if (position <= numberOfEntries / 2) {
+                    // position is closer to firstNode, traverse from firstNode
+                    Node currentNode = firstNode;
+                    for (int i = 1; i < position; i++) {
+                        currentNode = currentNode.next; // traverse to the node at the specified position
+                    }
+                    removedData = currentNode.data;
+                    currentNode.previous.next = currentNode.next;
+                    currentNode.next.previous = currentNode.previous;
+                    numberOfEntries --;
+
+                } else {
+                    // position is closer to lastNode, traverse from lastNode
+                    Node currentNode = lastNode;
+                    for (int i = numberOfEntries; i > position; i--) {
+                        currentNode = currentNode.previous; // traverse to the node at the specified position
+                    }
+                    removedData = currentNode.data;
+                    currentNode.previous.next = currentNode.next;
+                    currentNode.next.previous = currentNode.previous;
+                    numberOfEntries --;
+                }
             }
-            numberOfEntries--;
-            return result;
         }
-        return null;
+        return removedData;
     }
 
     @Override
     public T getEntry(int position) {
-        if (position >= 1 && position <= numberOfEntries) {
-            Node currentNode = firstNode;
-            for (int i = 1; i < position; i++) {
-                currentNode = currentNode.next;
+        // retrieves entry at specified position in the DoublyLinkedList
+        // returns the entry if successful, null if position is invalid
+
+        T result = null;
+        // check if position is valid: >=1 and <= numberOfEntries
+        if (checkPositionValid(position, numberOfEntries)) {
+            // position is valid, proceed to retrieve entry at specified position
+            // to increase efficiency, we can check if position is closer to firstNode or lastNode
+            if (position <= numberOfEntries / 2) {
+                // position is closer to firstNode, traverse from firstNode
+                Node currentNode = firstNode;
+                for (int i = 1; i < position; i++) {
+                    currentNode = currentNode.next; // traverse to the node at the specified position
+                }
+                result = currentNode.data;
+            } else {
+                // position is closer to lastNode, traverse from lastNode
+                Node currentNode = lastNode;
+                for (int i = numberOfEntries; i > position; i--) {
+                    currentNode = currentNode.previous; // traverse to the node at the specified position
+                }
+                result = currentNode.data;
             }
-            return currentNode.data;
         }
-        return null;
+        return result;
     }
 
     @Override
     public boolean replace(int position, T newEntry) {
-        throw new UnsupportedOperationException("Not supported yet."); // Generated from nbfs://nbhost/SystemFileSystem/Templates/Classes/Code/GeneratedMethodBody
+        // replaces entry at specified position in the DoublyLinkedList
+        // returns true if successful, false if position is invalid
+
+        boolean replaced = false;
+        // check if position is valid: >=1 and <= numberOfEntries
+        if (checkPositionValid(position, numberOfEntries)) {
+            // position is valid, proceed to interpret position
+            // to increase efficiency, we can check if position is closer to firstNode or lastNode
+            if (position <= numberOfEntries / 2) {
+                // position is closer to firstNode, traverse from firstNode
+                Node currentNode = firstNode;
+                for (int i = 1; i < position; i++) {
+                    currentNode = currentNode.next; // traverse to the node at the specified position
+                }
+                currentNode.data = newEntry; // replace entry at specified position
+                replaced = true;
+            } else {
+                // position is closer to lastNode, traverse from lastNode
+                Node currentNode = lastNode;
+                for (int i = numberOfEntries; i > position; i--) {
+                    currentNode = currentNode.previous; // traverse to the node at the specified position
+                }
+                currentNode.data = newEntry; // replace entry at specified position
+                replaced = true;
+            }
+        }
+        return replaced;
     }
 
     @Override
     public boolean contains(T anEntry) {
-        throw new UnsupportedOperationException("Not supported yet."); // Generated from nbfs://nbhost/SystemFileSystem/Templates/Classes/Code/GeneratedMethodBody
+        // checks if the DoublyLinkedList contains the specified entry
+        // returns true if the entry is found, false otherwise
+        // can implement by traversing both end at same time
+
+        // if list is empty, return false
+        if (isEmpty()) {
+            return false;
+        }
+
+        // list is not empty, traverse from both ends of the list
+        Node frontNode = firstNode;
+        Node backNode = lastNode;
+        while (frontNode != null && backNode != null) {
+            if (frontNode.data.equals(anEntry)) {
+                return true;
+            }
+            if (backNode.data.equals(anEntry)) {
+                return true;
+            }
+            frontNode = frontNode.next;
+            backNode = backNode.previous;
+        }
+        return false;
     }
 
     @Override
@@ -135,10 +268,27 @@ public class DoublyLinkedList<T> implements ListInterface<T> {
 
     @Override
     public void clear() {
-        throw new UnsupportedOperationException("Not supported yet."); // Generated from nbfs://nbhost/SystemFileSystem/Templates/Classes/Code/GeneratedMethodBody
+        // clears the DoublyLinkedList
+        firstNode = null;
+        lastNode = null;
+        numberOfEntries = 0;
     }
     
+    @Override
+    public boolean equals(Object obj) {
+        if (this == obj) {
+            return true;
+        }
+
+        if (obj == null || getClass() != obj.getClass()) {
+            return false;
+        }
+        Booking other = (Booking) obj;
+        return bookingID.equals(other.bookingID);
+    }
+
     //node swapping based on priority, but just swap the data(.data) 
+    @Override
     public void swap(int position1, int position2) {
         if (position1 >= 1 && position1 <= numberOfEntries
                 && position2 >= 1 && position2 <= numberOfEntries) {
@@ -158,5 +308,35 @@ public class DoublyLinkedList<T> implements ListInterface<T> {
             node1.data = node2.data;
             node2.data = temp;
         }
+    }
+    
+    @Override
+    public void printList() {
+        // prints the entries in the DoublyLinkedList
+        Node currentNode = firstNode;
+        while (currentNode != null) {
+            System.out.print(currentNode.data + " ");
+            currentNode = currentNode.next;
+        }
+        System.out.println();
+    }
+    
+    @Override
+    public String toString() {
+        // returns a string representation of the DoublyLinkedList
+        StringBuilder sb = new StringBuilder();
+        Node currentNode = firstNode;
+        while (currentNode != null) {
+            sb.append(currentNode.data).append(" ");
+            currentNode = currentNode.next;
+        }
+        return sb.toString();
+    }
+
+    private boolean checkPositionValid(int position, int positionLimit) {
+        if (position < 1 || position > positionLimit) {
+            return false; // checks for invalid position, if true ends by returning false
+        }
+        return true;
     }
 }

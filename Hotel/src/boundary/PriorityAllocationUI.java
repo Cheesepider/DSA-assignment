@@ -37,26 +37,29 @@ public class PriorityAllocationUI {
             switch (choice) {
 
                 case 1:
-                    addBookingMenu();
-                    break;
-                case 2:
                     allocateNextRoom();
                     break;
-                case 3:
+
+                case 2:
                     displayWaitingList();
                     break;
-                case 4:
+
+                case 3:
                     searchBooking();
                     break;
-                case 5:
-                    generateAllocationReport();
+
+                case 4:
+                    generatePriorityAllocationReport();
                     break;
-                case 6:
+
+                case 5:
                     generateFilteredPriorityReport();
                     break;
+
                 case 0:
                     System.out.println("Returning to Main Menu...");
                     break;
+
                 default:
                     System.out.println("Invalid choice. Please try again.");
             }
@@ -68,140 +71,105 @@ public class PriorityAllocationUI {
         System.out.println("\n===============================================");
         System.out.println("      VIP & Loyalty Tier Room Allocation");
         System.out.println("===============================================");
-        System.out.println("1. Add Booking Request");
-        System.out.println("2. Allocate Next Room");
-        System.out.println("3. Display Waiting List");
-        System.out.println("4. Search Booking");
-        System.out.println("5. Generate Allocation Report");
-        System.out.println("6. Generate Filtered Priority Report");
+        System.out.println("1. Allocate Next Room");
+        System.out.println("2. Display Priority Waiting List");
+        System.out.println("3. Search Booking");
+        System.out.println("4. Generate Priority Allocation Report");
+        System.out.println("5. Generate Filtered Priority Report");
         System.out.println("0. Back to Main Menu");
         System.out.println("===============================================");
-    }
-
-    private void addBookingMenu() {
-
-        System.out.println("\n--- Add Booking Request ---");
-
-        String bookingID = ValidationUtility.inputBookingID(scanner);
-
-        String memberID = ValidationUtility.inputMemberID(scanner);
-
-        Member member = control.findMemberByID(memberID);
-
-        if (member == null) {
-            System.out.println("Member ID not found.");
-            return;
-        }
-
-        // System automatically records the current registration date and time
-        LocalDate bookingDate = ValidationUtility.inputDate(scanner,
-                "Enter Booking Date (yyyy-MM-dd): ");
-
-        LocalDate checkInDate = ValidationUtility.inputDate(scanner,
-                "Enter Check-In Date (yyyy-MM-dd): ");
-
-        LocalDate checkOutDate = ValidationUtility.inputDate(scanner,
-                "Enter Check-Out Date (yyyy-MM-dd): ");
-
-        LocalDateTime registrationTime = LocalDateTime.now();
-
-        Booking newBooking = new Booking(
-                bookingID,
-                bookingDate,
-                checkInDate,
-                checkOutDate,
-                registrationTime,
-                member,
-                null
-        );
-
-        control.addBooking(newBooking);
-
-        System.out.println("\nBooking request added successfully!");
-        System.out.println("Booking Date: " + bookingDate);
-        System.out.println("Registration Time: " + registrationTime);
-        System.out.println("Member: " + member.getMemberName());
-        System.out.println("Loyalty Tier: " + member.getLoyaltyTier());
     }
 
     private void allocateNextRoom() {
 
         System.out.println("\n--- Allocate Next Room ---");
 
-        ListInterface<Booking> bookings = control.getBookingList();
+        Booking allocatedBooking = control.allocateNextRoom();
 
-        Booking nextBooking = null;
+        if (allocatedBooking == null) {
 
-        // Find the highest-priority booking that has no room yet
-        for (int i = 1; i <= bookings.getNumberOfEntries(); i++) {
+            System.out.println(
+                    "No waiting booking can currently be allocated.");
 
-            Booking booking = bookings.getEntry(i);
-
-            if (booking.getRoom() == null) {
-                nextBooking = booking;
-                break;
-            }
-        }
-
-        if (nextBooking == null) {
-            System.out.println("No booking is currently waiting for room allocation.");
             return;
         }
 
-        Room allocatedRoom = control.allocateNextRoom();
+        System.out.println("\nRoom allocation successful!");
+        System.out.println(
+                "Booking ID: " + allocatedBooking.getBookingID());
 
-        if (allocatedRoom != null) {
+        System.out.println(
+                "Member: "
+                + allocatedBooking.getMember().getMemberName());
 
-            System.out.println("\nRoom allocation successful!");
-            System.out.println("Booking ID: " + nextBooking.getBookingID());
-            System.out.println("Member: " + nextBooking.getMember().getMemberName());
-            System.out.println("Loyalty Tier: "
-                    + nextBooking.getMember().getLoyaltyTier());
-            System.out.println("Room ID: " + allocatedRoom.getRoomID());
+        System.out.println(
+                "Loyalty Tier: "
+                + allocatedBooking.getMember().getLoyaltyTier());
 
-        } else {
-            System.out.println("\nNo vacant room is currently available.");
-            System.out.println("Booking remains in the priority waiting list.");
-        }
+        System.out.println(
+                "Room: "
+                + allocatedBooking.getRoom().getRoomNumber());
     }
 
     private void displayWaitingList() {
 
         System.out.println("\n--- Priority Waiting List ---");
 
-        ListInterface<Booking> bookings = control.getBookingList();
+        ListInterface<Booking> waitingList = control.getWaitingList();
 
-        if (bookings.isEmpty()) {
-            System.out.println("No booking requests in the waiting list.");
+        if (waitingList.isEmpty()) {
+            System.out.println("No booking requests are currently waiting.");
             return;
         }
 
-        for (int i = 1; i <= bookings.getNumberOfEntries(); i++) {
+        System.out.println(
+                "==============================================================================================");
+        System.out.printf(
+                "%-9s %-11s %-15s %-12s %-12s %-12s %-20s%n",
+                "Priority",
+                "Booking ID",
+                "Member",
+                "Tier",
+                "Room Type",
+                "Check-In",
+                "Registration Time"
+        );
 
-            Booking booking = bookings.getEntry(i);
-            Member member = booking.getMember();
+        System.out.println(
+                "----------------------------------------------------------------------------------------------");
 
-            System.out.println("\nPosition: " + i);
-            System.out.println("Booking ID: " + booking.getBookingID());
-            System.out.println("Member: " + member.getMemberName());
-            System.out.println("Loyalty Tier: " + member.getLoyaltyTier());
-            System.out.println("Booking Date: " + booking.getBookingDate());
-            System.out.println("Registration Time: " + booking.getRegistrationTime());
+        for (int i = 1; i <= waitingList.getNumberOfEntries(); i++) {
 
-            if (booking.getRoom() == null) {
-                System.out.println("Room Status: Waiting for Allocation");
-            } else {
-                System.out.println("Room Status: Room Assigned");
-                System.out.println("Room ID: " + booking.getRoom().getRoomID());
+            Booking booking = waitingList.getEntry(i);
+
+            String roomType = "-";
+
+            if (booking.getRoom() != null) {
+                roomType = booking.getRoom().getRoomType().toString();
             }
+
+            System.out.printf(
+                    "%-9d %-11d %-15s %-12s %-12s %-12s %-20s%n",
+                    i,
+                    booking.getBookingID(),
+                    booking.getMember().getMemberName(),
+                    booking.getMember().getLoyaltyTier(),
+                    roomType,
+                    booking.getCheckInDate(),
+                    booking.getRegistrationTime()
+            );
         }
+
+        System.out.println(
+                "==============================================================================================");
     }
 
     private void searchBooking() {
 
         System.out.println("\n--- Search Booking ---");
 
-        String bookingID = ValidationUtility.inputBookingID(scanner);
+        System.out.print("Enter Booking ID: ");
+        int bookingID = ValidationUtility.inputChoice(scanner);
 
         Booking booking = control.findBookingByID(bookingID);
 
@@ -212,214 +180,183 @@ public class PriorityAllocationUI {
 
         System.out.println("\n--- Booking Details ---");
         System.out.println("Booking ID: " + booking.getBookingID());
-        System.out.println("Booking Date: " + booking.getBookingDate());
+        System.out.println("Member: " + booking.getMember().getMemberName());
+        System.out.println("Loyalty Tier: " + booking.getMember().getLoyaltyTier());
         System.out.println("Check-In Date: " + booking.getCheckInDate());
         System.out.println("Check-Out Date: " + booking.getCheckOutDate());
+        System.out.println("Registration Time: " + booking.getRegistrationTime());
+        System.out.println("Booking Status: " + booking.getBookingStatus());
 
-        System.out.println("Member: "
-                + booking.getMember().getMemberName());
+        //To keep the req   uested room type，eventhough in waiting, that's y !=null
+        //may not been allocated, but for searching purpose
+        if (booking.getRoom() != null) {
 
-        System.out.println("Loyalty Tier: "
-                + booking.getMember().getLoyaltyTier());
-
-        if (booking.getRoom() == null) {
-            System.out.println("Room Status: Waiting for Allocation");
-        } else {
-            System.out.println("Room ID: "
-                    + booking.getRoom().getRoomID());
-
-            System.out.println("Room Status: "
-                    + booking.getRoom().getRoomStatus());
+            System.out.println("Room Type: " + booking.getRoom().getRoomType());
+            System.out.println("Room Number: " + booking.getRoom().getRoomNumber());
         }
     }
 
-    private void generateAllocationReport() {
+    private void generatePriorityAllocationReport() {
 
         LocalDateTime reportTime = LocalDateTime.now();
 
-        ListInterface<Booking> bookings = control.getBookingList();
-        ListInterface<Room> rooms = control.getRoomList();
+        ListInterface<Booking> waitingList = control.getWaitingList();
 
-        int totalBookings = bookings.getNumberOfEntries();
-        int allocatedBookings = 0;
-        int waitingBookings = 0;
+        int totalWaiting = control.countWaitingBookings();
+        int totalConfirmed = control.countConfirmedBookings();
+        
+        //Tier counter
+        int eliteCount = control.countWaitingBookingsByTier(Member.LoyaltyTier.Elite);
+        int diamondCount = control.countWaitingBookingsByTier(Member.LoyaltyTier.Diamond);
+        int platinumCount = control.countWaitingBookingsByTier(Member.LoyaltyTier.Platinum);
+        int regularCount = control.countWaitingBookingsByTier(Member.LoyaltyTier.Regular);
 
-        int eliteCount = 0;
-        int diamondCount = 0;
-        int platinumCount = 0;
-        int standardCount = 0;
+        //RoomType counter
+        int singleRooms = control.countRoomsByType(Room.RoomType.SINGLE);
+        int doubleRooms = control.countRoomsByType(Room.RoomType.DOUBLE);
+        int suiteRooms = control.countRoomsByType(Room.RoomType.SUITE);
 
-        int vacantRooms = 0;
-        int occupiedRooms = 0;
+        System.out.println("\n==========================================================================");
+        System.out.println("                 PRIORITY ALLOCATION SUMMARY REPORT");
+        System.out.println("==========================================================================");
 
-        for (int i = 1; i <= totalBookings; i++) {
+        System.out.println("Generated At          : " + reportTime);
 
-            Booking booking = bookings.getEntry(i);
+        System.out.println("--------------------------------------------------------------------------");
 
-            if (booking.getRoom() == null) {
-                waitingBookings++;
-            } else {
-                allocatedBookings++;
-            }
+        System.out.printf("%-30s : %d%n", "Total Waiting Requests", totalWaiting);
+        System.out.printf("%-30s : %d%n", "Total Confirmed Bookings", totalConfirmed);
+        System.out.println("--------------------------------------------------------------------------");
+        System.out.printf("%-30s : %d%n", "Elite Waiting Requests", eliteCount);
+        System.out.printf("%-30s : %d%n", "Diamond Waiting Requests", diamondCount);
+        System.out.printf("%-30s : %d%n", "Platinum Waiting Requests", platinumCount);
+        System.out.printf("%-30s : %d%n", "Regular Waiting Requests", regularCount);
+        System.out.println("--------------------------------------------------------------------------");
+        System.out.printf("%-30s : %d%n", "Single Rooms", singleRooms);
+        System.out.printf("%-30s : %d%n", "Double Rooms", doubleRooms);
+        System.out.printf("%-30s : %d%n", "Suite Rooms", suiteRooms);
 
-            String tier = booking.getMember().getLoyaltyTier();
+        System.out.println("\n==========================================================================");
+        System.out.println("                         WAITING LIST DETAILS");
+        System.out.println("==========================================================================");
 
-            switch (tier) {
-                case "Elite":
-                    eliteCount++;
-                    break;
-                case "Diamond":
-                    diamondCount++;
-                    break;
-                case "Platinum":
-                    platinumCount++;
-                    break;
-                case "Standard":
-                    standardCount++;
-                    break;
-            }
+        if (waitingList.isEmpty()) {
+            System.out.println("No booking requests are currently waiting.");
+            System.out.println("==========================================================================");
+            return;
         }
 
-        for (int i = 1; i <= rooms.getNumberOfEntries(); i++) {
-
-            Room room = rooms.getEntry(i);
-
-            if (room.getRoomStatus().equals("Vacant")) {
-                vacantRooms++;
-            } else {
-                occupiedRooms++;
-            }
-        }
-
-        System.out.println("\n==============================================================");
-        System.out.println("             ROOM ALLOCATION SUMMARY REPORT");
-        System.out.println("==============================================================");
-        System.out.println("Generated At       : " + reportTime);
-        System.out.println("--------------------------------------------------------------");
-
-        System.out.printf("%-25s : %d%n", "Total Booking Requests", totalBookings);
-        System.out.printf("%-25s : %d%n", "Allocated Bookings", allocatedBookings);
-        System.out.printf("%-25s : %d%n", "Waiting Bookings", waitingBookings);
-
-        System.out.println("--------------------------------------------------------------");
-
-        System.out.printf("%-25s : %d%n", "Elite Bookings", eliteCount);
-        System.out.printf("%-25s : %d%n", "Diamond Bookings", diamondCount);
-        System.out.printf("%-25s : %d%n", "Platinum Bookings", platinumCount);
-        System.out.printf("%-25s : %d%n", "Standard Bookings", standardCount);
-
-        System.out.println("--------------------------------------------------------------");
-
-        System.out.printf("%-25s : %d%n", "Total Rooms", rooms.getNumberOfEntries());
-        System.out.printf("%-25s : %d%n", "Occupied Rooms", occupiedRooms);
-        System.out.printf("%-25s : %d%n", "Vacant Rooms", vacantRooms);
-        System.out.println();
-        System.out.println("=======================================================================================");
-        System.out.println("             CURRENT BOOKING SUMMARY");
-        System.out.println("=======================================================================================");
-
-        System.out.printf("%-10s %-12s %-15s %-12s %-15s %-10s %-12s%n",
+        System.out.printf(
+                "%-9s %-11s %-15s %-11s %-12s %-12s %-12s%n",
                 "Priority",
                 "Booking ID",
                 "Member",
                 "Tier",
-                "Booking Date",
-                "Room",
-                "Status");
+                "Room Type",
+                "Check-In",
+                "Check-Out"
+        );
 
-        System.out.println("---------------------------------------------------------------------------------------");
+        System.out.println(
+                "--------------------------------------------------------------------------");
 
-        for (int i = 1; i <= bookings.getNumberOfEntries(); i++) {
+        for (int i = 1;
+                i <= waitingList.getNumberOfEntries();
+                i++) {
 
-            Booking booking = bookings.getEntry(i);
+            Booking booking = waitingList.getEntry(i);
 
-            String roomID;
-            String status;
+            String roomType = "-";
 
-            if (booking.getRoom() == null) {
-                roomID = "-";
-                status = "Waiting";
-            } else {
-                roomID = booking.getRoom().getRoomID();
-                status = "Allocated";
+            if (booking.getRoom() != null) {
+                roomType = booking.getRoom().getRoomType().toString();
             }
 
-            System.out.printf("%-10d %-12s %-15s %-12s %-15s %-10s %-12s%n",
+            System.out.printf(
+                    "%-9d %-11d %-15s %-11s %-12s %-12s %-12s%n",
                     i,
                     booking.getBookingID(),
                     booking.getMember().getMemberName(),
                     booking.getMember().getLoyaltyTier(),
-                    booking.getBookingDate(),
-                    roomID,
-                    status);
+                    roomType,
+                    booking.getCheckInDate(),
+                    booking.getCheckOutDate()
+            );
         }
-        System.out.println("=======================================================================================");
+        System.out.println(
+                "==========================================================================");
     }
 
     private void generateFilteredPriorityReport() {
 
-        System.out.println("\n--- Filtered Priority Allocation Report ---");
+        System.out.println("\n--- Filtered Priority Waiting List Report ---");
 
-        System.out.println("Select Loyalty Tier:");
+        // Filter 1: Choose Tier
+        System.out.println("\nSelect Loyalty Tier:");
         System.out.println("1. Elite");
         System.out.println("2. Diamond");
         System.out.println("3. Platinum");
-        System.out.println("4. Standard");
+        System.out.println("4. Regular");
         System.out.println("5. All");
 
         System.out.print("Enter choice: ");
-        int tierChoice = scanner.nextInt();
-        scanner.nextLine();
+        int tierChoice = ValidationUtility.inputChoice(scanner);
 
-        String selectedTier = "";
+        Member.LoyaltyTier selectedTier = null;
 
         switch (tierChoice) {
             case 1:
-                selectedTier = "Elite";
+                selectedTier = Member.LoyaltyTier.Elite;
                 break;
             case 2:
-                selectedTier = "Diamond";
+                selectedTier = Member.LoyaltyTier.Diamond;
                 break;
             case 3:
-                selectedTier = "Platinum";
+                selectedTier = Member.LoyaltyTier.Platinum;
                 break;
             case 4:
-                selectedTier = "Standard";
+                selectedTier = Member.LoyaltyTier.Regular;
                 break;
             case 5:
-                selectedTier = "All";
+                selectedTier = null; // All
                 break;
             default:
                 System.out.println("Invalid choice.");
                 return;
         }
 
-        System.out.println("\nSelect Allocation Status:");
-        System.out.println("1. Waiting");
-        System.out.println("2. Allocated");
-        System.out.println("3. All");
+      
+        // Filter 2: Choose RoomType
+        System.out.println("\nSelect Room Type:");
+        System.out.println("1. Single");
+        System.out.println("2. Double");
+        System.out.println("3. Suite");
+        System.out.println("4. All");
 
         System.out.print("Enter choice: ");
-        int statusChoice = scanner.nextInt();
-        scanner.nextLine();
+        int roomChoice = ValidationUtility.inputChoice(scanner);
 
-        String selectedStatus = "";
+        Room.RoomType selectedRoomType = null;
 
-        switch (statusChoice) {
+        switch (roomChoice) {
             case 1:
-                selectedStatus = "Waiting";
+                selectedRoomType = Room.RoomType.SINGLE;
                 break;
             case 2:
-                selectedStatus = "Allocated";
+                selectedRoomType = Room.RoomType.DOUBLE;
                 break;
             case 3:
-                selectedStatus = "All";
+                selectedRoomType = Room.RoomType.SUITE;
+                break;
+            case 4:
+                selectedRoomType = null; // All
                 break;
             default:
                 System.out.println("Invalid choice.");
                 return;
         }
 
+        // Filter 3: Choose Check-In Date
         System.out.println("\nSelect Check-In Date:");
         System.out.println("1. Today");
         System.out.println("2. Tomorrow");
@@ -427,132 +364,154 @@ public class PriorityAllocationUI {
         System.out.println("4. All Dates");
 
         System.out.print("Enter choice: ");
-        int dateChoice = scanner.nextInt();
-        scanner.nextLine();
+        int dateChoice = ValidationUtility.inputChoice(scanner);
 
         LocalDate selectedDate = null;
 
         switch (dateChoice) {
             case 1:
-                selectedDate = LocalDate.now(); //today
+                selectedDate = LocalDate.now();
                 break;
+
             case 2:
-                selectedDate = LocalDate.now().plusDays(1); //tomorrow
+                selectedDate = LocalDate.now().plusDays(1);
                 break;
+
             case 3:
-                selectedDate = ValidationUtility.inputDate(scanner, //choose date
+                selectedDate = ValidationUtility.inputDate(
+                        scanner,
                         "Enter Check-In Date (yyyy-MM-dd): ");
                 break;
+
             case 4:
-                selectedDate = null; //semua
+                selectedDate = null;
                 break;
+
             default:
                 System.out.println("Invalid choice.");
                 return;
         }
 
-        ListInterface<Booking> filteredBookings = new DoublyLinkedList<>();
+        // =========================
+        // Filtering
+        // =========================
+        ListInterface<Booking> waitingList = control.getWaitingList();
 
-        ListInterface<Booking> bookings = control.getBookingList();
+        ListInterface<Booking> filteredBookings
+                = new DoublyLinkedList<>();
 
-        for (int i = 1; i <= bookings.getNumberOfEntries(); i++) {
+        for (int i = 1;
+                i <= waitingList.getNumberOfEntries();
+                i++) {
 
-            Booking booking = bookings.getEntry(i);
-
-            String bookingTier = booking.getMember().getLoyaltyTier();
+            Booking booking = waitingList.getEntry(i);
 
             boolean tierMatch
-                    = selectedTier.equals("All")
-                    || bookingTier.equals(selectedTier);
+                    = selectedTier == null
+                    || booking.getMember().getLoyaltyTier() == selectedTier;
 
-            boolean statusMatch;
-
-            if (selectedStatus.equals("Waiting")) {
-                statusMatch = booking.getRoom() == null;
-
-            } else if (selectedStatus.equals("Allocated")) {
-                statusMatch = booking.getRoom() != null;
-
-            } else {
-                statusMatch = true;
-            }
+            boolean roomMatch
+                    = selectedRoomType == null
+                    || (booking.getRoom() != null
+                    && booking.getRoom().getRoomType() == selectedRoomType);
 
             boolean dateMatch
                     = selectedDate == null
                     || booking.getCheckInDate().equals(selectedDate);
 
-            if (tierMatch && statusMatch && dateMatch) {
+            if (tierMatch && roomMatch && dateMatch) {
                 filteredBookings.add(booking);
             }
         }
-        for (int i = 1; i <= filteredBookings.getNumberOfEntries(); i++) {
 
-            for (int j = i + 1; j <= filteredBookings.getNumberOfEntries(); j++) {
+        // =========================
+        // Custom Priority Sorting
+        // =========================
+        for (int i = 1;
+                i <= filteredBookings.getNumberOfEntries();
+                i++) {
+
+            for (int j = i + 1;
+                    j <= filteredBookings.getNumberOfEntries();
+                    j++) {
 
                 Booking bookingA = filteredBookings.getEntry(i);
                 Booking bookingB = filteredBookings.getEntry(j);
 
                 if (control.comparePriority(bookingA, bookingB) < 0) {
-                    filteredBookings.swap(i, j);
+
+                    filteredBookings.replace(i, bookingB);
+                    filteredBookings.replace(j, bookingA);
                 }
             }
         }
 
-        System.out.println("\n===============================================");
-        System.out.println("     FILTERED PRIORITY ALLOCATION REPORT");
-        System.out.println("===============================================");
+        // Report Output
+        System.out.println(
+                "\n==========================================================================================");
+        System.out.println(
+                "                      FILTERED PRIORITY WAITING LIST REPORT");
+        System.out.println(
+                "==========================================================================================");
+        System.out.println("Generated At : " + LocalDateTime.now());
+        System.out.println("Loyalty Tier : " + (selectedTier == null ? "All" : selectedTier));
+        System.out.println("Room Type    : " + (selectedRoomType == null ? "All" : selectedRoomType));
+        System.out.println("Check-In Date: " + (selectedDate == null ? "All Dates" : selectedDate));
+        System.out.println(
+                "------------------------------------------------------------------------------------------");
 
-        System.out.println("Generated At: " + LocalDateTime.now());
-        System.out.println("Loyalty Tier: " + selectedTier);
-        System.out.println("Allocation Status: " + selectedStatus);
-
-        if (selectedDate == null) {
-            System.out.println("Check-In Date: All Dates");
-        } else {
-            System.out.println("Check-In Date: " + selectedDate);
-        }
-
-        System.out.println("-----------------------------------------------");
-        System.out.println("Total Matching Bookings: " + filteredBookings.getNumberOfEntries());
-        System.out.println("-----------------------------------------------");
+        System.out.println("Total Matching Requests: " + filteredBookings.getNumberOfEntries());
+        System.out.println( "------------------------------------------------------------------------------------------");
 
         if (filteredBookings.isEmpty()) {
-            System.out.println("No bookings match the selected criteria.");
-            System.out.println("===============================================");
+
+            System.out.println("No booking requests match the selected criteria.");
+            System.out.println("==========================================================================================");
+
             return;
         }
 
-        System.out.printf("%-13s %-15s %-12s %-20s %-15s %-15s%n",
+        System.out.printf(
+                "%-9s %-11s %-15s %-12s %-12s %-12s %-20s%n",
+                "Priority",
                 "Booking ID",
                 "Member",
                 "Tier",
-                "Registration Time",
+                "Room Type",
                 "Check-In",
-                "Status");
+                "Registration Time"
+        );
 
-        System.out.println("--------------------------------------------------------------------------------");
+        System.out.println(
+                "------------------------------------------------------------------------------------------");
 
-        for (int i = 1; i <= filteredBookings.getNumberOfEntries(); i++) {
+        for (int i = 1;
+                i <= filteredBookings.getNumberOfEntries();
+                i++) {
 
             Booking booking = filteredBookings.getEntry(i);
-            String status;
 
-            if (booking.getRoom() == null) {
-                status = "Waiting";
-            } else {
-                status = "Allocated";
+            String roomType = "-";
+
+            if (booking.getRoom() != null) {
+                roomType
+                        = booking.getRoom().getRoomType().toString();
             }
 
-            System.out.printf("%-13s %-15s %-12s %-20s %-15s %-15s%n",
+            System.out.printf(
+                    "%-9d %-11d %-15s %-12s %-12s %-12s %-20s%n",
+                    i,
                     booking.getBookingID(),
                     booking.getMember().getMemberName(),
                     booking.getMember().getLoyaltyTier(),
-                    booking.getRegistrationTime(),
+                    roomType,
                     booking.getCheckInDate(),
-                    status);
+                    booking.getRegistrationTime()
+            );
         }
 
-        System.out.println("===============================================");
+        System.out.println(
+                "==========================================================================================");
     }
 
     public static void main(String[] args) {
