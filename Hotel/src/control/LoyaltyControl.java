@@ -5,12 +5,14 @@ import java.time.format.DateTimeFormatter;
 import java.time.temporal.ChronoUnit;
 
 import dao.LoyaltyDAO;
+import dao.RegistrationDAO;
 import adt.DoublyLinkedList;
 import adt.ListInterface;
 import entity.Member;
 import entity.Member.LoyaltyTier;
 import entity.PointsTransaction;
 import entity.RewardItem;
+import main.App;
 import utility.VirtualClock;
 
 /**
@@ -46,10 +48,17 @@ public class LoyaltyControl {
     // default look-ahead window (in days) for the expiry alert
     public static final int DEFAULT_EXPIRY_ALERT_DAYS = 30;
 
-    // standalone mode: uses this module's own hardcoded member data
-    // (only used when running/testing the Loyalty module in isolation)
+    // standalone mode: uses RegistrationDAO's member data (App.memberList)
+    // so that this module can still be run/tested independently, without
+    // duplicating a separate set of hardcoded members just for this module.
+    // If App.memberList hasn't been populated yet (e.g. running LoyaltyUI's
+    // main() directly, without going through the full App startup), it is
+    // seeded here first.
     public LoyaltyControl() {
-        memberList = loyaltyDAO.initializeMemberData();
+        if (App.memberList.isEmpty()) {
+            RegistrationDAO.initializeMemberData();
+        }
+        memberList = App.memberList;
         rewardCatalog = loyaltyDAO.initializeRewardCatalog();
         transactionList = loyaltyDAO.initializeTransactionData(memberList, POINTS_VALIDITY_MONTHS);
     }
