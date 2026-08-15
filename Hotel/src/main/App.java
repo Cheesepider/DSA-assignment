@@ -13,6 +13,7 @@ import dao.RegistrationDAO;
 import boundary.BookingUI;
 import boundary.RegistrationUI;
 import boundary.PriorityAllocationUI;
+import boundary.LoyaltyUI;
 import utility.VirtualClock;
 
 public class App {
@@ -46,7 +47,7 @@ public class App {
         java.util.Scanner scanner = new java.util.Scanner(System.in);
         int module = 0;
 
-        while (module != 4) {
+        while (module != 5) {
             System.out.println("\n==========================================");
             System.out.println("   HOTEL MANAGEMENT SYSTEM   ");
             System.out.println("  Time: " + VirtualClock.getInstance().toString());
@@ -55,7 +56,8 @@ public class App {
             System.out.println("1. Booking Module");
             System.out.println("2. Registration Module  (Check-In / Check-Out)");
             System.out.println("3. VIP & Loyalty Tier Room Allocation");
-            System.out.println("4. Exit");
+            System.out.println("4. Loyalty & Reward Service Module");
+            System.out.println("5. Exit");
             System.out.print("Choice: ");
 
             try {
@@ -78,6 +80,10 @@ public class App {
                     break;
 
                 case 4:
+                    new LoyaltyUI(memberList).displayMenu();
+                    break;
+
+                case 5:
                     System.out.println("Exiting system. Goodbye!");
                     break;
             }

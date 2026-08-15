@@ -1,75 +1,81 @@
-/*
- * @author <Your Name>
- */
 package entity;
 
 import java.time.LocalDate;
-import java.time.LocalDateTime;
+import java.util.concurrent.atomic.AtomicInteger;
 
+/**
+ * Entity class representing a single loyalty-points-earning transaction.
+ * Each time a member earns points, a separate PointsTransaction is recorded
+ * so that different batches of points (earned on different dates) can each
+ * expire independently - a single Member.loyaltyPoints total alone cannot
+ * represent this, since it does not track *when* each portion was earned.
+ *
+ * Plain old Java object (POJO) - no input/output statements here.
+ *
+ * @author (Loyalty & Reward Service module)
+ */
 public class PointsTransaction {
 
-    private String transactionID;
-    private Member member;
-    private String transactionType; // "EARN" or "REDEEM"
-    private int points;
-    private LocalDateTime transactionDate;
-    private LocalDate expiryDate; // only applicable to "EARN" transactions
-    private String description;
+    private static final AtomicInteger transactionIDCounter = new AtomicInteger(1);
+
+    private int transactionID;
+    private int memberID;
+    private String memberName;
+    private int pointsEarned;
+    private LocalDate earnedDate;
+    private LocalDate expiryDate;
 
     public PointsTransaction() {
     }
 
-    public PointsTransaction(String transactionID, Member member,
-            String transactionType, int points, LocalDateTime transactionDate,
-            LocalDate expiryDate, String description) {
-
-        this.transactionID = transactionID;
-        this.member = member;
-        this.transactionType = transactionType;
-        this.points = points;
-        this.transactionDate = transactionDate;
+    public PointsTransaction(int memberID, String memberName, int pointsEarned,
+                              LocalDate earnedDate, LocalDate expiryDate) {
+        this.transactionID = transactionIDCounter.getAndIncrement();
+        this.memberID = memberID;
+        this.memberName = memberName;
+        this.pointsEarned = pointsEarned;
+        this.earnedDate = earnedDate;
         this.expiryDate = expiryDate;
-        this.description = description;
     }
 
-    public String getTransactionID() {
+    public int getTransactionID() {
         return transactionID;
     }
 
-    public void setTransactionID(String transactionID) {
+    public void setTransactionID(int transactionID) {
         this.transactionID = transactionID;
     }
 
-    public Member getMember() {
-        return member;
+    public int getMemberID() {
+        return memberID;
     }
 
-    public void setMember(Member member) {
-        this.member = member;
+    public void setMemberID(int memberID) {
+        this.memberID = memberID;
     }
 
-    public String getTransactionType() {
-        return transactionType;
+    public String getMemberName() {
+        return memberName;
     }
 
-    public void setTransactionType(String transactionType) {
-        this.transactionType = transactionType;
+    public void setMemberName(String memberName) {
+        this.memberName = memberName;
     }
 
-    public int getPoints() {
-        return points;
+    public int getPointsEarned() {
+        return pointsEarned;
     }
 
-    public void setPoints(int points) {
-        this.points = points;
+    public void setPointsEarned(int pointsEarned) {
+        this.pointsEarned = pointsEarned;
     }
 
-    public LocalDateTime getTransactionDate() {
-        return transactionDate;
+    public LocalDate getEarnedDate() {
+        return earnedDate;
     }
 
-    public void setTransactionDate(LocalDateTime transactionDate) {
-        this.transactionDate = transactionDate;
+    public void setEarnedDate(LocalDate earnedDate) {
+        this.earnedDate = earnedDate;
     }
 
     public LocalDate getExpiryDate() {
@@ -80,36 +86,32 @@ public class PointsTransaction {
         this.expiryDate = expiryDate;
     }
 
-    public String getDescription() {
-        return description;
-    }
-
-    public void setDescription(String description) {
-        this.description = description;
-    }
-
     @Override
     public boolean equals(Object obj) {
         if (this == obj) {
             return true;
         }
-        if (obj == null || getClass() != obj.getClass()) {
+        if (!(obj instanceof PointsTransaction)) {
             return false;
         }
         PointsTransaction other = (PointsTransaction) obj;
-        return transactionID.equals(other.transactionID);
+        return this.transactionID == other.transactionID;
+    }
+
+    @Override
+    public int hashCode() {
+        return Integer.hashCode(transactionID);
     }
 
     @Override
     public String toString() {
-        return "PointsTransaction{"
-                + "transactionID='" + transactionID + '\''
-                + ", member=" + (member == null ? "null" : member.getMemberID())
-                + ", transactionType='" + transactionType + '\''
-                + ", points=" + points
-                + ", transactionDate=" + transactionDate
-                + ", expiryDate=" + expiryDate
-                + ", description='" + description + '\''
-                + '}';
+        return "PointsTransaction{" +
+                "transactionID=" + transactionID +
+                ", memberID=" + memberID +
+                ", memberName='" + memberName + '\'' +
+                ", pointsEarned=" + pointsEarned +
+                ", earnedDate=" + earnedDate +
+                ", expiryDate=" + expiryDate +
+                '}';
     }
 }
