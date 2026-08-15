@@ -11,11 +11,10 @@ import entity.Room.RoomType;
 import main.App;
 import java.util.Scanner;
 import java.time.LocalDate;
-import java.time.LocalDateTime;
-import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
 import adt.DoublyLinkedList;
 import adt.ListInterface;
+import utility.VirtualClock;
 
 public class BookingControl {
 
@@ -104,8 +103,8 @@ public class BookingControl {
             String input = scanner.nextLine().trim();
             try {
                 checkInDate = LocalDate.parse(input);
-                if (checkInDate.isBefore(util.VirtualClock.getInstance().today())) {
-                    System.out.println("Check-in date cannot be in the past. (Today is " + util.VirtualClock.getInstance().today() + ")");
+                if (checkInDate.isBefore(VirtualClock.getInstance().today())) {
+                    System.out.println("Check-in date cannot be in the past. (Today is " + VirtualClock.getInstance().today() + ")");
                     checkInDate = null;
                 }
             } catch (DateTimeParseException e) {
@@ -173,10 +172,10 @@ public class BookingControl {
             String waitlistChoice = scanner.nextLine().trim();
             if (waitlistChoice.equalsIgnoreCase("y")) {
                 Booking req = new Booking(
-                    util.VirtualClock.getInstance().today(),
+                    VirtualClock.getInstance().today(),
                     checkInDate,
                     checkOutDate,
-                    util.VirtualClock.getInstance().now(),
+                    VirtualClock.getInstance().now(),
                     Booking.BookingStatus.PENDING,
                     member,
                     new Room("WAITLIST", selectedType) // dummy room to store requested room type
@@ -202,10 +201,10 @@ public class BookingControl {
         } else {
             Room selectedRoom = availableRooms.getEntry(1); // Auto-assign the first available
             Booking booking = new Booking(
-                util.VirtualClock.getInstance().today(),
+                VirtualClock.getInstance().today(),
                 checkInDate,
                 checkOutDate,
-                util.VirtualClock.getInstance().now(),
+                VirtualClock.getInstance().now(),
                 Booking.BookingStatus.CONFIRMED,
                 member,
                 selectedRoom
@@ -427,7 +426,7 @@ public class BookingControl {
                 if (!inStr.isEmpty()) {
                     try {
                         LocalDate d = LocalDate.parse(inStr);
-                        if (d.isBefore(util.VirtualClock.getInstance().today())) {
+                        if (d.isBefore(VirtualClock.getInstance().today())) {
                             System.out.println("Date cannot be in the past. Update cancelled.");
                             return;
                         }
@@ -542,7 +541,7 @@ public class BookingControl {
             String input = scanner.nextLine().trim();
             try {
                 checkInDate = LocalDate.parse(input);
-                if (checkInDate.isBefore(util.VirtualClock.getInstance().today())) {
+                if (checkInDate.isBefore(VirtualClock.getInstance().today())) {
                     System.out.println("Check-in date cannot be in the past.");
                     checkInDate = null;
                 }

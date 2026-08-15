@@ -12,6 +12,7 @@ import entity.Room;
 import dao.RegistrationDAO;
 import boundary.BookingUI;
 import boundary.RegistrationUI;
+import boundary.PriorityAllocationUI;
 import utility.VirtualClock;
 
 public class App {
@@ -45,7 +46,7 @@ public class App {
         java.util.Scanner scanner = new java.util.Scanner(System.in);
         int module = 0;
 
-        while (module != 3) {
+        while (module != 4) {
             System.out.println("\n==========================================");
             System.out.println("   HOTEL MANAGEMENT SYSTEM   ");
             System.out.println("  Time: " + VirtualClock.getInstance().toString());
@@ -53,7 +54,8 @@ public class App {
             System.out.println("Select Module:");
             System.out.println("1. Booking Module");
             System.out.println("2. Registration Module  (Check-In / Check-Out)");
-            System.out.println("3. Exit");
+            System.out.println("3. VIP & Loyalty Tier Room Allocation");
+            System.out.println("4. Exit");
             System.out.print("Choice: ");
 
             try {
@@ -66,14 +68,18 @@ public class App {
                 case 1:
                     new BookingUI().displayBookingMenu();
                     break;
+
                 case 2:
                     new RegistrationUI().displayRegistrationMenu();
                     break;
+
                 case 3:
+                    new PriorityAllocationUI().startUI();
+                    break;
+
+                case 4:
                     System.out.println("Exiting system. Goodbye!");
                     break;
-                default:
-                    System.out.println("Invalid choice. Please enter 1, 2, or 3.");
             }
         }
 
