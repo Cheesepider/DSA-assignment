@@ -34,8 +34,15 @@ import utility.VirtualClock;
 public class LoyaltyControl {
 
     private ListInterface<Member> memberList;
-    private ListInterface<RewardItem> rewardCatalog;
-    private ListInterface<PointsTransaction> transactionList;
+
+    // static: shared across every LoyaltyControl instance for the lifetime of
+    // the program, so reward catalog / transaction history persist even
+    // though App.java creates a brand new LoyaltyUI/LoyaltyControl each time
+    // the Loyalty module is re-entered from the main menu. This mirrors how
+    // App.memberList already persists (it's a static field on App itself).
+    private static ListInterface<RewardItem> rewardCatalog;
+    private static ListInterface<PointsTransaction> transactionList;
+
     private LoyaltyDAO loyaltyDAO = new LoyaltyDAO();
 
     // Points thresholds that trigger an automatic tier change
@@ -59,8 +66,7 @@ public class LoyaltyControl {
             RegistrationDAO.initializeMemberData();
         }
         memberList = App.memberList;
-        rewardCatalog = loyaltyDAO.initializeRewardCatalog();
-        transactionList = loyaltyDAO.initializeTransactionData(memberList, POINTS_VALIDITY_MONTHS);
+        initializeSharedDataIfNeeded();
     }
 
     // integrated mode: uses the application-wide shared memberList
@@ -68,8 +74,21 @@ public class LoyaltyControl {
     // module, and members registered elsewhere are visible here too
     public LoyaltyControl(ListInterface<Member> sharedMemberList) {
         memberList = sharedMemberList;
-        rewardCatalog = loyaltyDAO.initializeRewardCatalog();
-        transactionList = loyaltyDAO.initializeTransactionData(memberList, POINTS_VALIDITY_MONTHS);
+        initializeSharedDataIfNeeded();
+    }
+
+    // reward catalog and transaction history are only seeded once per
+    // program run (guarded by the null check), instead of being rebuilt
+    // every time a new LoyaltyControl is constructed - so data added or
+    // changed during one visit to the module is still there the next time
+    // the module is opened, without needing any changes to App.java
+    private void initializeSharedDataIfNeeded() {
+        if (rewardCatalog == null) {
+            rewardCatalog = loyaltyDAO.initializeRewardCatalog();
+        }
+        if (transactionList == null) {
+            transactionList = loyaltyDAO.initializeTransactionData(memberList, POINTS_VALIDITY_MONTHS);
+        }
     }
 
     // =========================================================
@@ -488,11 +507,14 @@ public class LoyaltyControl {
         if (newPointsRequired <= 0) {
             return "Points required must be a positive value.";
         }
+        // existingReward is the same object reference stored inside
+        // rewardCatalog, so mutating its fields here already updates the
+        // catalog directly - no replace() call is needed (same reasoning
+        // as earnPoints()/redeemReward() mutating Member directly)
         RewardItem existingReward = rewardCatalog.getEntry(position);
         existingReward.setRewardName(newName);
         existingReward.setDescription(newDescription);
         existingReward.setPointsRequired(newPointsRequired);
-        rewardCatalog.replace(position, existingReward);
         return "Reward ID " + rewardID + " updated successfully.";
     }
 
