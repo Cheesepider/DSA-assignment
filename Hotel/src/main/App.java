@@ -9,8 +9,10 @@ import adt.ListInterface;
 import entity.Booking;
 import entity.Member;
 import entity.Room;
+import entity.TaskLog;
 import dao.RegistrationDAO;
 import boundary.BookingUI;
+import boundary.HousekeepingUI;
 import boundary.RegistrationUI;
 import boundary.PriorityAllocationUI;
 import boundary.LoyaltyUI;
@@ -31,6 +33,9 @@ public class App {
     public static ListInterface<Booking> bookingHistoryList = new DoublyLinkedList<>(); // completed / cancelled bookings
     public static ListInterface<Booking> bookingRequestsQueue = new DoublyLinkedList<>(); // priority waitlist for rooms
 
+    public static ListInterface<TaskLog> taskLogStack = new DoublyLinkedList<>(); // use for undo stack
+    public static ListInterface<TaskLog> cleaningHistoryList = new DoublyLinkedList<>(); // use for cleaning history
+
     // =========================================================
     // Entry point
     // =========================================================
@@ -47,7 +52,7 @@ public class App {
         java.util.Scanner scanner = new java.util.Scanner(System.in);
         int module = 0;
 
-        while (module != 5) {
+        while (module != 6) {
             System.out.println("\n==========================================");
             System.out.println("   HOTEL MANAGEMENT SYSTEM   ");
             System.out.println("  Time: " + VirtualClock.getInstance().toString());
@@ -57,7 +62,8 @@ public class App {
             System.out.println("2. Registration Module  (Check-In / Check-Out)");
             System.out.println("3. VIP & Loyalty Tier Room Allocation");
             System.out.println("4. Loyalty & Reward Service Module");
-            System.out.println("5. Exit");
+            System.out.println("5. Housekeeping Module");
+            System.out.println("6. Exit");
             System.out.print("Choice: ");
 
             try {
@@ -84,6 +90,10 @@ public class App {
                     break;
 
                 case 5:
+                    new HousekeepingUI().displayHousekeepingMenu();
+                    break;
+
+                case 6:
                     System.out.println("Exiting system. Goodbye!");
                     break;
             }
