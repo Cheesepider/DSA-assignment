@@ -219,7 +219,7 @@ public class LoyaltyControl {
 
     // binary search on a member-ID-sorted copy of the list
     private Member findMemberByID(int memberID) {
-        ListInterface<Member> sortedCopy = copyMemberList(memberList);
+        ListInterface<Member> sortedCopy = memberList.copy();
         selectionSortByID(sortedCopy);
 
         int low = 1;
@@ -244,13 +244,13 @@ public class LoyaltyControl {
         return position == -1 ? null : rewardCatalog.getEntry(position);
     }
 
+    // RewardItem.equals() compares only rewardID, so a "probe" object with
+    // just the ID set is enough for the ADT's indexOf() to find the real
+    // match position in rewardCatalog.
     private int findRewardPosition(int rewardID) {
-        for (int i = 1; i <= rewardCatalog.getNumberOfEntries(); i++) {
-            if (rewardCatalog.getEntry(i).getRewardID() == rewardID) {
-                return i;
-            }
-        }
-        return -1;
+        RewardItem probe = new RewardItem();
+        probe.setRewardID(rewardID);
+        return rewardCatalog.indexOf(probe);
     }
 
     // =========================================================
@@ -298,27 +298,11 @@ public class LoyaltyControl {
         }
     }
 
-    private ListInterface<Member> copyMemberList(ListInterface<Member> source) {
-        ListInterface<Member> copy = new DoublyLinkedList<>();
-        for (int i = 1; i <= source.getNumberOfEntries(); i++) {
-            copy.add(source.getEntry(i));
-        }
-        return copy;
-    }
-
-    private ListInterface<PointsTransaction> copyTransactionList(ListInterface<PointsTransaction> source) {
-        ListInterface<PointsTransaction> copy = new DoublyLinkedList<>();
-        for (int i = 1; i <= source.getNumberOfEntries(); i++) {
-            copy.add(source.getEntry(i));
-        }
-        return copy;
-    }
-
     // =========================================================
     // Use Case 5: Generate Loyalty Ranking Report (by points)
     // =========================================================
     public String generateLoyaltyReport() {
-        ListInterface<Member> sortedList = copyMemberList(memberList);
+        ListInterface<Member> sortedList = memberList.copy();
         bubbleSortByPointsDescending(sortedList);
 
         DateTimeFormatter headerFormatter = DateTimeFormatter.ofPattern("EEEE, MMM dd yyyy, hh:mm a");
@@ -435,7 +419,7 @@ public class LoyaltyControl {
      * being tracked correctly.
      */
     public String generateAllTransactionsReport() {
-        ListInterface<PointsTransaction> allTransactions = copyTransactionList(transactionList);
+        ListInterface<PointsTransaction> allTransactions = transactionList.copy();
         insertionSortByExpiryDate(allTransactions);
 
         return buildTransactionReport(allTransactions,

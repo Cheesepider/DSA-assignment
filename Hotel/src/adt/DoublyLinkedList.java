@@ -7,7 +7,7 @@ package adt;
 
 /**
  *
- * @author jlohz
+ * @author jlohz, Kao Yong Feng
  * @param <T>
  */
 public class DoublyLinkedList<T> implements ListInterface<T> {
@@ -318,6 +318,51 @@ public class DoublyLinkedList<T> implements ListInterface<T> {
             currentNode = currentNode.next;
         }
         return sb.toString();
+    }
+
+    // returns a new DoublyLinkedList containing the same entries, in the
+    // same order, as this list (a shallow copy - entries are not cloned).
+    // Useful whenever a caller needs to sort/rearrange a list (e.g. via
+    // swap()) without disturbing the original list's order.
+    @Override
+    public ListInterface<T> copy() {
+        ListInterface<T> newList = new DoublyLinkedList<>();
+        Node currentNode = firstNode;
+        while (currentNode != null) {
+            newList.add(currentNode.data);
+            currentNode = currentNode.next;
+        }
+        return newList;
+    }
+
+    // returns the 1-based position of the first occurrence of anEntry,
+    // or -1 if not found. Reuses the same front/back simultaneous-traversal
+    // technique as contains(), but returns the matching position instead
+    // of just a boolean.
+    @Override
+    public int indexOf(T anEntry) {
+        if (isEmpty()) {
+            return -1;
+        }
+
+        Node frontNode = firstNode;
+        Node backNode = lastNode;
+        int frontPosition = 1;
+        int backPosition = numberOfEntries;
+
+        while (frontPosition <= backPosition) {
+            if (frontNode.data.equals(anEntry)) {
+                return frontPosition;
+            }
+            if (backNode.data.equals(anEntry)) {
+                return backPosition;
+            }
+            frontNode = frontNode.next;
+            backNode = backNode.previous;
+            frontPosition++;
+            backPosition--;
+        }
+        return -1;
     }
 
     private boolean checkPositionValid(int position, int positionLimit) {
