@@ -4,17 +4,29 @@
  */
 package utility;
 
+import java.time.Duration;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
+import java.time.format.DateTimeFormatter;
 
 public class VirtualClock {
+
     private static VirtualClock instance;
-    private LocalDateTime currentTime;
+
+    // Real system time when the virtual clock was last adjusted
+    private LocalDateTime realStartTime;
+
+    // Virtual time corresponding to realStartTime
+    private LocalDateTime virtualStartTime;
+
+    private static final DateTimeFormatter FORMATTER =
+            DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
 
     private VirtualClock() {
-        // Initialize with real current time or a fixed default (e.g., today at 09:00 AM)
-        this.currentTime = LocalDateTime.of(LocalDate.now(), LocalTime.of(9, 0));
+        // Start from the actual current system date and time
+        this.realStartTime = LocalDateTime.now();
+        this.virtualStartTime = this.realStartTime;
     }
 
     public static synchronized VirtualClock getInstance() {
@@ -25,42 +37,67 @@ public class VirtualClock {
     }
 
     // --- Read Methods ---
+
     public LocalDateTime now() {
-        return currentTime;
+        Duration elapsed =
+                Duration.between(realStartTime, LocalDateTime.now());
+
+        return virtualStartTime.plus(elapsed);
     }
 
     public LocalDate today() {
-        return currentTime.toLocalDate();
+        return now().toLocalDate();
     }
 
     public LocalTime time() {
-        return currentTime.toLocalTime();
+        return now().toLocalTime();
     }
 
-    // --- Control Methods for Presentation/Demo ---
-    
-    /** Advance clock by a set number of hours (e.g., advance 4 hours to cross 12 PM) */
+    // --- Control Methods for Presentation / Demo ---
+
     public void advanceHours(long hours) {
-        this.currentTime = this.currentTime.plusHours(hours);
+        setVirtualTime(now().plusHours(hours));
     }
 
-    /** Advance clock by days (e.g., jump to check-out day) */
     public void advanceDays(long days) {
-        this.currentTime = this.currentTime.plusDays(days);
+        setVirtualTime(now().plusDays(days));
     }
 
-    /** Set specific time directly (e.g., "2026-08-07 14:30") */
-    public void setDateTime(int year, int month, int day, int hour, int minute) {
-        this.currentTime = LocalDateTime.of(year, month, day, hour, minute);
+    public void setDateTime(
+            int year,
+            int month,
+            int day,
+            int hour,
+            int minute) {
+
+        setVirtualTime(
+                LocalDateTime.of(
+                        year,
+                        month,
+                        day,
+                        hour,
+                        minute
+                )
+        );
     }
 
-    /** Set just the time for today (e.g., jump to 11:30 AM or 02:00 PM) */
     public void setTimeOfDay(int hour, int minute) {
-        this.currentTime = LocalDateTime.of(this.currentTime.toLocalDate(), LocalTime.of(hour, minute));
+        setVirtualTime(
+                LocalDateTime.of(
+                        today(),
+                        LocalTime.of(hour, minute)
+                )
+        );
+    }
+
+    // Reset the reference point of the virtual clock
+    private void setVirtualTime(LocalDateTime newVirtualTime) {
+        this.realStartTime = LocalDateTime.now();
+        this.virtualStartTime = newVirtualTime;
     }
 
     @Override
     public String toString() {
-        return currentTime.toString().replace("T", " ");
+        return now().format(FORMATTER);
     }
 }
