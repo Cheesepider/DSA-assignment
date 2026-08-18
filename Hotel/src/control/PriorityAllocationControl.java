@@ -6,7 +6,7 @@ package control;
 
 /**
  *
- * @author jlohz
+ * @author Jerry
  */
 import entity.Booking;
 import entity.Member;
@@ -36,7 +36,6 @@ public class PriorityAllocationControl {
                 bookingB.getRegistrationTime())) {
             return -1;
         }
-
         return 0;
     }
 
@@ -102,7 +101,7 @@ public class PriorityAllocationControl {
         return null;
     }
 
-    public Booking allocateNextRoom() {
+    public Booking allocateNextRoom() {  //demonstration function, for prove purpose
 
         reorganizePriority();
 
@@ -126,12 +125,75 @@ public class PriorityAllocationControl {
                 return request;
             }
         }
+        return null;
+    }
 
+    public Booking allocateFreedRoom(Room freedRoom) {
+
+        if (freedRoom == null || App.bookingRequestsQueue.isEmpty()) {
+            return null;
+        }
+
+        // Always update the queue according to the latest loyalty tier
+        // and registration time before allocating.
+        reorganizePriority();
+
+        for (int i = 1;
+                i <= App.bookingRequestsQueue.getNumberOfEntries();
+                i++) {
+
+            Booking request = App.bookingRequestsQueue.getEntry(i);
+
+            // Only consider customers waiting for the same room type
+            if (request.getRoom() == null
+                    || request.getRoom().getRoomType() != freedRoom.getRoomType()) {
+                continue;
+            }
+
+            boolean hasOverlap = false;
+
+            // Check whether this freed room is available
+            // for the requested booking dates.
+            for (int j = 1; j <= App.bookingList.getNumberOfEntries(); j++) {
+
+                Booking existingBooking = App.bookingList.getEntry(j);
+
+                if (existingBooking.getRoom() != null
+                        && existingBooking.getRoom().getRoomID() == freedRoom.getRoomID()
+                        && existingBooking.getBookingStatus()
+                        != Booking.BookingStatus.CANCELLED) {
+
+                    boolean overlap
+                            = request.getCheckInDate()
+                                    .isBefore(existingBooking.getCheckOutDate())
+                            && request.getCheckOutDate()
+                                    .isAfter(existingBooking.getCheckInDate());
+
+                    if (overlap) {
+                        hasOverlap = true;
+                        break;
+                    }
+                }
+            }
+            if (!hasOverlap) {
+
+                request.setRoom(freedRoom);
+                request.setBookingStatus(
+                        Booking.BookingStatus.CONFIRMED);
+
+                App.bookingList.add(request);
+                App.bookingRequestsQueue.remove(i);
+
+                return request;
+            }
+        }
         return null;
     }
 
     //Let UI see/refer Priority waiting list
+    //by checking if tier changed after points added, so reorganize first
     public ListInterface<Booking> getWaitingList() {
+        reorganizePriority();
         return App.bookingRequestsQueue;
     }
 
@@ -157,7 +219,6 @@ public class PriorityAllocationControl {
                 return booking;
             }
         }
-
         return null;
     }
 
@@ -187,7 +248,6 @@ public class PriorityAllocationControl {
                 count++;
             }
         }
-
         return count;
     }
 
@@ -205,7 +265,6 @@ public class PriorityAllocationControl {
                 count++;
             }
         }
-
         return count;
     }
 }
