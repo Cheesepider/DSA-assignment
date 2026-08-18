@@ -49,17 +49,17 @@ public class RegistrationDAO {
     public static void initializeMemberData() {
         // Regular tier members
         App.memberList.add(new Member("Alice Tan",   "91234567", "alice@mail.com",   LoyaltyTier.Regular,  0));
-        App.memberList.add(new Member("Bob Lim",     "87654321", "bob@mail.com",     LoyaltyTier.Regular,  50));
+        App.memberList.add(new Member("Bob Lim",     "87654321", "bob@mail.com",     LoyaltyTier.Regular,  500));
 
         // Platinum tier members
-        App.memberList.add(new Member("Carol Wong",  "93456789", "carol@mail.com",   LoyaltyTier.Platinum, 200));
-        App.memberList.add(new Member("David Ng",    "81234567", "david@mail.com",   LoyaltyTier.Platinum, 350));
+        App.memberList.add(new Member("Carol Wong",  "93456789", "carol@mail.com",   LoyaltyTier.Platinum, 1200));
+        App.memberList.add(new Member("David Ng",    "81234567", "david@mail.com",   LoyaltyTier.Platinum, 2350));
 
         // Diamond tier members
-        App.memberList.add(new Member("Eve Chua",    "99887766", "eve@mail.com",     LoyaltyTier.Diamond,  800));
+        App.memberList.add(new Member("Eve Chua",    "99887766", "eve@mail.com",     LoyaltyTier.Diamond,  3800));
 
         // Elite tier member
-        App.memberList.add(new Member("Frank Ho",    "98765432", "frank@mail.com",   LoyaltyTier.Elite,    1500));
+        App.memberList.add(new Member("Frank Ho",    "98765432", "frank@mail.com",   LoyaltyTier.Elite,    6000));
 
         System.out.println("[DAO] " + App.memberList.getNumberOfEntries() + " members loaded.");
     }
