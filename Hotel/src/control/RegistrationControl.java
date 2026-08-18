@@ -423,101 +423,139 @@ public class RegistrationControl {
         }
     }
 
-    public static void generateBookingReport(java.util.Scanner scanner) {
-        System.out.print("Enter Start Date (YYYY-MM-DD): ");
-        LocalDate start = LocalDate.parse(scanner.nextLine().trim());
-        System.out.print("Enter End Date (YYYY-MM-DD): ");
-        LocalDate end = LocalDate.parse(scanner.nextLine().trim());
+    public static void generateBookingSummaryReport(int year, int month, Booking.BookingStatus statusFilter) {
+        System.out.println("\n=======================================================");
+        System.out.println("         BOOKING SUMMARY & TREND REPORT                ");
+        System.out.printf("               Period: %04d-%02d\n", year, month);
+        System.out.println("=======================================================");
 
-        System.out.println("\n--- Booking Report (" + start + " to " + end + ") ---");
+        int[] dailyCounts = new int[32];
+        int totalBookings = 0;
         int confirmed = 0, checkedIn = 0, checkedOut = 0, cancelled = 0;
 
         // Process active
         for (int i = 1; i <= App.bookingList.getNumberOfEntries(); i++) {
             Booking b = App.bookingList.getEntry(i);
-            if (isWithinTimeframe(b, start, end)) {
-                if (b.getBookingStatus() == Booking.BookingStatus.CONFIRMED)
-                    confirmed++;
-                else if (b.getBookingStatus() == Booking.BookingStatus.CHECKED_IN)
-                    checkedIn++;
+            LocalDate date = b.getCheckInDate();
+
+            if (date.getYear() == year && date.getMonthValue() == month) {
+                if (statusFilter == null || b.getBookingStatus() == statusFilter) {
+                    dailyCounts[date.getDayOfMonth()]++;
+                    totalBookings++;
+
+                    if (b.getBookingStatus() == Booking.BookingStatus.CONFIRMED) confirmed++;
+                    else if (b.getBookingStatus() == Booking.BookingStatus.CHECKED_IN) checkedIn++;
+                }
             }
         }
 
         // Process history
         for (int i = 1; i <= App.bookingHistoryList.getNumberOfEntries(); i++) {
             Booking b = App.bookingHistoryList.getEntry(i);
-            if (isWithinTimeframe(b, start, end)) {
-                if (b.getBookingStatus() == Booking.BookingStatus.CHECKED_OUT)
-                    checkedOut++;
-                else if (b.getBookingStatus() == Booking.BookingStatus.CANCELLED)
-                    cancelled++;
+            LocalDate date = b.getCheckInDate();
+
+            if (date.getYear() == year && date.getMonthValue() == month) {
+                if (statusFilter == null || b.getBookingStatus() == statusFilter) {
+                    dailyCounts[date.getDayOfMonth()]++;
+                    totalBookings++;
+
+                    if (b.getBookingStatus() == Booking.BookingStatus.CHECKED_OUT) checkedOut++;
+                    else if (b.getBookingStatus() == Booking.BookingStatus.CANCELLED) cancelled++;
+                }
             }
         }
 
+        System.out.println("\n--- BOOKING STATUS SUMMARY ---");
         System.out.println("Confirmed Bookings (Active): " + confirmed);
         System.out.println("Checked-In Bookings (Active): " + checkedIn);
         System.out.println("Checked-Out Bookings (Completed): " + checkedOut);
         System.out.println("Cancelled Bookings: " + cancelled);
-        System.out.println("Total: " + (confirmed + checkedIn + checkedOut + cancelled));
+        System.out.println("Total Bookings in Period: " + totalBookings);
+
+        System.out.println("\n--- DAILY BOOKING VOLUME TREND ---");
+        for (int day = 1; day <= 31; day++) {
+            if (dailyCounts[day] > 0 || (day <= LocalDate.of(year, month, 1).lengthOfMonth() && totalBookings > 0)) {
+                System.out.printf("Day %02d | %2d | ", day, dailyCounts[day]);
+                for (int star = 0; star < dailyCounts[day]; star++) {
+                    System.out.print("■ ");
+                }
+                System.out.println();
+            }
+        }
+        System.out.println("-------------------------------------------------------");
+        System.out.println("End of Report.");
     }
 
-    public static void generateRevenueReport(java.util.Scanner scanner) {
-        System.out.print("Enter Start Date (YYYY-MM-DD): ");
-        LocalDate start = LocalDate.parse(scanner.nextLine().trim());
-        System.out.print("Enter End Date (YYYY-MM-DD): ");
-        LocalDate end = LocalDate.parse(scanner.nextLine().trim());
+    public static void generateRevenueSummaryReport(int year, int month, Room.RoomType typeFilter) {
+        System.out.println("\n=======================================================");
+        System.out.println("         REVENUE SUMMARY & TREND REPORT                ");
+        System.out.printf("               Period: %04d-%02d\n", year, month);
+        System.out.println("=======================================================");
 
-        System.out.println("\n--- Revenue Report (" + start + " to " + end + ") ---");
+        double[] dailyRevenue = new double[32];
         double totalNormal = 0, totalPenalty = 0;
 
         for (int i = 1; i <= App.bookingHistoryList.getNumberOfEntries(); i++) {
             Booking b = App.bookingHistoryList.getEntry(i);
-            if (b.getBookingStatus() == Booking.BookingStatus.CHECKED_OUT &&
-                    !b.getBookingDate().isBefore(start) && !b.getBookingDate().isAfter(end)) {
+            
+            // Assuming revenue is realized on checkout date (bookingDate in history)
+            LocalDate date = b.getBookingDate(); 
+
+            if (b.getBookingStatus() == Booking.BookingStatus.CHECKED_OUT && 
+                date != null && date.getYear() == year && date.getMonthValue() == month) {
 
                 Room room = b.getRoom();
+                if (typeFilter != null && (room == null || room.getRoomType() != typeFilter)) continue;
+
                 double rate = (room != null) ? room.getRoomType().getBaseRate() : 0.0;
 
                 LocalDate checkIn = b.getCheckInDate();
                 LocalDate scheduledCheckOut = b.getCheckOutDate();
-                LocalDate actualCheckOut = b.getBookingDate();
 
                 long scheduledNights = java.time.temporal.ChronoUnit.DAYS.between(checkIn, scheduledCheckOut);
-                if (scheduledNights <= 0)
-                    scheduledNights = 1;
+                if (scheduledNights <= 0) scheduledNights = 1;
 
-                long overstayDays = java.time.temporal.ChronoUnit.DAYS.between(scheduledCheckOut, actualCheckOut);
+                long overstayDays = java.time.temporal.ChronoUnit.DAYS.between(scheduledCheckOut, date);
+                double revenueForBooking = 0;
 
                 if (overstayDays > 0) {
-                    totalNormal += (scheduledNights * rate);
-                    totalPenalty += (overstayDays * rate * 1.5);
+                    double normal = (scheduledNights * rate);
+                    double penalty = (overstayDays * rate * 1.5);
+                    totalNormal += normal;
+                    totalPenalty += penalty;
+                    revenueForBooking = normal + penalty;
                 } else {
-                    long actualNights = java.time.temporal.ChronoUnit.DAYS.between(checkIn, actualCheckOut);
-                    if (actualNights <= 0)
-                        actualNights = 1;
-                    totalNormal += (actualNights * rate);
+                    long actualNights = java.time.temporal.ChronoUnit.DAYS.between(checkIn, date);
+                    if (actualNights <= 0) actualNights = 1;
+                    double normal = (actualNights * rate);
+                    totalNormal += normal;
+                    revenueForBooking = normal;
                 }
+                
+                dailyRevenue[date.getDayOfMonth()] += revenueForBooking;
             }
         }
-        System.out.println("Normal Room Revenue: $" + totalNormal);
-        System.out.println("Overstay Penalty Revenue: $" + totalPenalty);
-        System.out.println("Total Revenue: $" + (totalNormal + totalPenalty));
-    }
 
-    private static boolean isWithinTimeframe(Booking b, LocalDate start, LocalDate end) {
-        return !b.getCheckInDate().isAfter(end) && !b.getCheckOutDate().isBefore(start);
-    }
+        System.out.println("\n--- REVENUE SUMMARY ---");
+        System.out.printf("Normal Room Revenue: $%.2f\n", totalNormal);
+        System.out.printf("Overstay Penalty Revenue: $%.2f\n", totalPenalty);
+        System.out.printf("Total Revenue: $%.2f\n", (totalNormal + totalPenalty));
 
-    // helper function helper function helper function helper function helper
-    // function helper function
-    // helper function helper function helper function helper function helper
-    // function helper function
-    // helper function helper function helper function helper function helper
-    // function helper function
-    // helper function helper function helper function helper function helper
-    // function helper function
-    // helper function helper function helper function helper function helper
-    // function helper function
+        System.out.println("\n--- DAILY REVENUE TREND ---");
+        for (int day = 1; day <= 31; day++) {
+            if (dailyRevenue[day] > 0 || (day <= LocalDate.of(year, month, 1).lengthOfMonth() && (totalNormal + totalPenalty) > 0)) {
+                System.out.printf("Day %02d | $%7.2f | ", day, dailyRevenue[day]);
+                // Scale the graph so it doesn't get ridiculously long. e.g., 1 block = $100
+                int blocks = (int) (dailyRevenue[day] / 100.0);
+                for (int star = 0; star < blocks; star++) {
+                    System.out.print("■ ");
+                }
+                System.out.println();
+            }
+        }
+        System.out.println("-------------------------------------------------------");
+        System.out.println("End of Report.");
+    }
 
     private static void simulateEnqueue(ListInterface<Member> waitlist, Member member) {
         // logic to add member to waitlist based on loyalty tier
