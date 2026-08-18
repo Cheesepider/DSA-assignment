@@ -13,6 +13,7 @@ import entity.Member.LoyaltyTier;
 import entity.PointsTransaction;
 import entity.RewardItem;
 import main.App;
+import utility.ReportFormatUtility;
 import utility.VirtualClock;
 
 /**
@@ -305,18 +306,10 @@ public class LoyaltyControl {
         ListInterface<Member> sortedList = memberList.copy();
         bubbleSortByPointsDescending(sortedList);
 
-        DateTimeFormatter headerFormatter = DateTimeFormatter.ofPattern("EEEE, MMM dd yyyy, hh:mm a");
-        String generatedAt = VirtualClock.getInstance().now().format(headerFormatter);
-
         StringBuilder sb = new StringBuilder();
-        sb.append("=============================================================\n");
-        sb.append("          TARUMT RESORTS - LOYALTY & REWARD PROGRAM\n");
-        sb.append("               MEMBER RANKING REPORT (BY POINTS)\n");
-        sb.append("-------------------------------------------------------------\n");
-        sb.append("Generated at: ").append(generatedAt).append("\n");
-        sb.append("=============================================================\n");
+        sb.append(ReportFormatUtility.buildHeader("MEMBER RANKING REPORT (BY POINTS)", VirtualClock.getInstance().now()));
         sb.append(String.format("%-5s %-10s %-20s %-12s %-10s%n", "Rank", "Member ID", "Member Name", "Tier", "Points"));
-        sb.append("-------------------------------------------------------------\n");
+        sb.append(ReportFormatUtility.separatorLine());
 
         int total = sortedList.getNumberOfEntries();
         for (int i = 1; i <= total; i++) {
@@ -324,9 +317,7 @@ public class LoyaltyControl {
             sb.append(String.format("%-5d %-10d %-20s %-12s %-10d%n",
                     i, m.getMemberID(), m.getMemberName(), m.getLoyaltyTier(), m.getLoyaltyPoints()));
         }
-        sb.append("-------------------------------------------------------------\n");
-        sb.append("Total members displayed: ").append(total).append("\n");
-        sb.append("=============================================================\n");
+        sb.append(ReportFormatUtility.buildFooter("Total members displayed", total));
         return sb.toString();
     }
 
@@ -345,19 +336,12 @@ public class LoyaltyControl {
             totalPoints[tierIndex] += m.getLoyaltyPoints();
         }
 
-        DateTimeFormatter headerFormatter = DateTimeFormatter.ofPattern("EEEE, MMM dd yyyy, hh:mm a");
-        String generatedAt = VirtualClock.getInstance().now().format(headerFormatter);
         int totalMembers = memberList.getNumberOfEntries();
 
         StringBuilder sb = new StringBuilder();
-        sb.append("=============================================================\n");
-        sb.append("          TARUMT RESORTS - LOYALTY & REWARD PROGRAM\n");
-        sb.append("              TIER DISTRIBUTION SUMMARY REPORT\n");
-        sb.append("-------------------------------------------------------------\n");
-        sb.append("Generated at: ").append(generatedAt).append("\n");
-        sb.append("=============================================================\n");
+        sb.append(ReportFormatUtility.buildHeader("TIER DISTRIBUTION SUMMARY REPORT", VirtualClock.getInstance().now()));
         sb.append(String.format("%-12s %-14s %-16s %-12s%n", "Tier", "No. Members", "Total Points", "Avg Points"));
-        sb.append("-------------------------------------------------------------\n");
+        sb.append(ReportFormatUtility.separatorLine());
 
         for (int i = tiers.length - 1; i >= 0; i--) { // display highest tier (Elite) first
             int count = memberCount[i];
@@ -365,9 +349,7 @@ public class LoyaltyControl {
             sb.append(String.format("%-12s %-14d %-16d %-12d%n", tiers[i], count, totalPoints[i], avg));
         }
 
-        sb.append("-------------------------------------------------------------\n");
-        sb.append("Total members in program: ").append(totalMembers).append("\n");
-        sb.append("=============================================================\n");
+        sb.append(ReportFormatUtility.buildFooter("Total members in program", totalMembers));
         return sb.toString();
     }
 
@@ -430,20 +412,13 @@ public class LoyaltyControl {
     // shared formatting logic for both the expiry-alert report and the full-history report
     private String buildTransactionReport(ListInterface<PointsTransaction> list, String subtitle, String emptyMessage) {
         LocalDate today = VirtualClock.getInstance().today();
-        DateTimeFormatter headerFormatter = DateTimeFormatter.ofPattern("EEEE, MMM dd yyyy, hh:mm a");
         DateTimeFormatter dateFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd");
-        String generatedAt = VirtualClock.getInstance().now().format(headerFormatter);
 
         StringBuilder sb = new StringBuilder();
-        sb.append("=============================================================\n");
-        sb.append("          TARUMT RESORTS - LOYALTY & REWARD PROGRAM\n");
-        sb.append("        ").append(subtitle).append("\n");
-        sb.append("-------------------------------------------------------------\n");
-        sb.append("Generated at: ").append(generatedAt).append("\n");
-        sb.append("=============================================================\n");
+        sb.append(ReportFormatUtility.buildHeader(subtitle, VirtualClock.getInstance().now()));
         sb.append(String.format("%-10s %-18s %-8s %-13s %-13s %-10s%n",
                 "MemberID", "Member Name", "Points", "Earned Date", "Expires On", "Days Left"));
-        sb.append("-------------------------------------------------------------\n");
+        sb.append(ReportFormatUtility.separatorLine());
 
         int total = list.getNumberOfEntries();
         for (int i = 1; i <= total; i++) {
@@ -454,13 +429,7 @@ public class LoyaltyControl {
                     t.getEarnedDate().format(dateFormatter), t.getExpiryDate().format(dateFormatter), daysLeft));
         }
 
-        sb.append("-------------------------------------------------------------\n");
-        if (total == 0) {
-            sb.append(emptyMessage).append("\n");
-        } else {
-            sb.append("Total transactions: ").append(total).append("\n");
-        }
-        sb.append("=============================================================\n");
+        sb.append(ReportFormatUtility.buildFooter("Total transactions", total, emptyMessage));
         return sb.toString();
     }
 
