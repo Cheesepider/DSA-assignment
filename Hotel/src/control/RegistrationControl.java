@@ -36,18 +36,15 @@ public class RegistrationControl {
     // by interacting with entity and boundary objects.
 
     // this is control class for registration module
-
     // for RegistrationControl, main use is to handle registration process
     // main tasks is registration of new customers, and check-in/check-out of
     // existing customers
-
     // methods methods methods methods methods
     // methods methods methods methods methods
     // methods methods methods methods methods
     // methods methods methods methods methods
     // methods methods methods methods methods
     // methods methods methods methods methods
-
     // list members
     public static void listMembers() {
         if (App.memberList.isEmpty()) {
@@ -71,9 +68,9 @@ public class RegistrationControl {
         if (!App.memberList.isEmpty()) { // list is not empty, check if customer is already registered
             for (int i = 1; i <= App.memberList.getNumberOfEntries(); i++) {
                 Member existingMember = App.memberList.getEntry(i);
-                if (Objects.equals(existingMember.getMemberName(), memberName) &&
-                        Objects.equals(existingMember.getPhoneNumber(), phoneNumber) &&
-                        Objects.equals(existingMember.getEmail(), email)) {
+                if (Objects.equals(existingMember.getMemberName(), memberName)
+                        && Objects.equals(existingMember.getPhoneNumber(), phoneNumber)
+                        && Objects.equals(existingMember.getEmail(), email)) {
                     // customer exists inside memberList
 
                     System.out.println("Welcome back, " + memberName + "!");
@@ -110,31 +107,28 @@ public class RegistrationControl {
     }
 
     public static void resolveWaitlistForRoom(Room freedRoom) {
-        for (int i = 1; i <= App.bookingRequestsQueue.getNumberOfEntries(); i++) {
-            Booking req = App.bookingRequestsQueue.getEntry(i);
-            if (req.getRoom() != null && req.getRoom().getRoomType() == freedRoom.getRoomType()) {
-                boolean hasOverlap = false;
-                for (int j = 1; j <= App.bookingList.getNumberOfEntries(); j++) {
-                    Booking active = App.bookingList.getEntry(j);
-                    if (active.getBookingStatus() != Booking.BookingStatus.CANCELLED &&
-                            active.getRoom() != null && active.getRoom().getRoomID() == freedRoom.getRoomID()) {
-                        if (req.getCheckInDate().isBefore(active.getCheckOutDate())
-                                && req.getCheckOutDate().isAfter(active.getCheckInDate())) {
-                            hasOverlap = true;
-                            break;
-                        }
-                    }
-                }
-                if (!hasOverlap) {
-                    req.setBookingStatus(Booking.BookingStatus.CONFIRMED);
-                    req.setRoom(freedRoom);
-                    App.bookingList.add(req);
-                    App.bookingRequestsQueue.remove(i);
-                    System.out.println("Waitlist request for " + req.getMember().getMemberName()
-                            + " has been promoted to CONFIRMED for room " + freedRoom.getRoomNumber());
-                    break;
-                }
-            }
+
+        if (freedRoom == null) {
+            return;
+        }
+
+        PriorityAllocationControl priorityControl
+                = new PriorityAllocationControl();
+
+        Booking allocatedBooking
+                = priorityControl.allocateFreedRoom(freedRoom);
+
+        if (allocatedBooking != null) {
+
+            System.out.println(
+                    "Priority waitlist automatically resolved.");
+
+            System.out.println(
+                    allocatedBooking.getMember().getMemberName()
+                    + " ("
+                    + allocatedBooking.getMember().getLoyaltyTier()
+                    + ") has been promoted to CONFIRMED for room "
+                    + freedRoom.getRoomNumber());
         }
     }
 
@@ -153,9 +147,9 @@ public class RegistrationControl {
         LocalDate today = VirtualClock.getInstance().today();
         for (int i = 1; i <= App.bookingList.getNumberOfEntries(); i++) {
             Booking b = App.bookingList.getEntry(i);
-            if (b.getMember().getMemberID() == member.getMemberID() &&
-                    b.getBookingStatus() == Booking.BookingStatus.CONFIRMED &&
-                    b.getCheckInDate().equals(today)) {
+            if (b.getMember().getMemberID() == member.getMemberID()
+                    && b.getBookingStatus() == Booking.BookingStatus.CONFIRMED
+                    && b.getCheckInDate().equals(today)) {
                 todayBooking = b;
                 break;
             }
@@ -186,8 +180,8 @@ public class RegistrationControl {
         Booking checkedInBooking = null;
         for (int i = 1; i <= App.bookingList.getNumberOfEntries(); i++) {
             Booking b = App.bookingList.getEntry(i);
-            if (b.getMember().getMemberID() == member.getMemberID() &&
-                    b.getBookingStatus() == Booking.BookingStatus.CHECKED_IN) {
+            if (b.getMember().getMemberID() == member.getMemberID()
+                    && b.getBookingStatus() == Booking.BookingStatus.CHECKED_IN) {
                 checkedInBooking = b;
                 break;
             }
@@ -216,7 +210,7 @@ public class RegistrationControl {
 
     public static void processCheckin(java.util.Scanner scanner) {
         runNoShowCheck();
-        
+
         if (App.checkInWaitlist.isEmpty()) {
             System.out.println("Check-in queue is empty.");
             return;
@@ -239,7 +233,7 @@ public class RegistrationControl {
                 System.out.println("Invalid option. Skipping...");
             }
         }
-        
+
         if (member == null) {
             System.out.println("No one was selected from the queue.");
             return;
@@ -249,9 +243,9 @@ public class RegistrationControl {
         Booking booking = null;
         for (int i = 1; i <= App.bookingList.getNumberOfEntries(); i++) {
             Booking b = App.bookingList.getEntry(i);
-            if (b.getMember().getMemberID() == member.getMemberID() &&
-                    b.getBookingStatus() == Booking.BookingStatus.CONFIRMED &&
-                    b.getCheckInDate().equals(today)) {
+            if (b.getMember().getMemberID() == member.getMemberID()
+                    && b.getBookingStatus() == Booking.BookingStatus.CONFIRMED
+                    && b.getCheckInDate().equals(today)) {
                 booking = b;
                 break;
             }
@@ -340,7 +334,7 @@ public class RegistrationControl {
                 System.out.println("Invalid option. Skipping...");
             }
         }
-        
+
         if (member == null) {
             System.out.println("No one was selected from the queue.");
             return;
@@ -349,8 +343,8 @@ public class RegistrationControl {
         Booking booking = null;
         for (int i = 1; i <= App.bookingList.getNumberOfEntries(); i++) {
             Booking b = App.bookingList.getEntry(i);
-            if (b.getMember().getMemberID() == member.getMemberID() &&
-                    b.getBookingStatus() == Booking.BookingStatus.CHECKED_IN) {
+            if (b.getMember().getMemberID() == member.getMemberID()
+                    && b.getBookingStatus() == Booking.BookingStatus.CHECKED_IN) {
                 booking = b;
                 break;
             }
@@ -374,8 +368,9 @@ public class RegistrationControl {
         }
 
         long scheduledNights = java.time.temporal.ChronoUnit.DAYS.between(checkIn, scheduledCheckOut);
-        if (scheduledNights <= 0)
+        if (scheduledNights <= 0) {
             scheduledNights = 1;
+        }
 
         double totalCharge = 0;
         long overstayDays = java.time.temporal.ChronoUnit.DAYS.between(scheduledCheckOut, actualCheckOut);
@@ -392,8 +387,9 @@ public class RegistrationControl {
             System.out.println("Total Due: $" + totalCharge);
         } else {
             long actualNights = java.time.temporal.ChronoUnit.DAYS.between(checkIn, actualCheckOut);
-            if (actualNights <= 0)
+            if (actualNights <= 0) {
                 actualNights = 1;
+            }
             totalCharge = actualNights * rate;
             System.out.println("--- BILL SUMMARY ---");
             System.out.println("Nights Stayed: " + actualNights + " @ $" + rate + "/night = $" + totalCharge);
@@ -443,8 +439,11 @@ public class RegistrationControl {
                     dailyCounts[date.getDayOfMonth()]++;
                     totalBookings++;
 
-                    if (b.getBookingStatus() == Booking.BookingStatus.CONFIRMED) confirmed++;
-                    else if (b.getBookingStatus() == Booking.BookingStatus.CHECKED_IN) checkedIn++;
+                    if (b.getBookingStatus() == Booking.BookingStatus.CONFIRMED) {
+                        confirmed++;
+                    } else if (b.getBookingStatus() == Booking.BookingStatus.CHECKED_IN) {
+                        checkedIn++;
+                    }
                 }
             }
         }
@@ -459,8 +458,11 @@ public class RegistrationControl {
                     dailyCounts[date.getDayOfMonth()]++;
                     totalBookings++;
 
-                    if (b.getBookingStatus() == Booking.BookingStatus.CHECKED_OUT) checkedOut++;
-                    else if (b.getBookingStatus() == Booking.BookingStatus.CANCELLED) cancelled++;
+                    if (b.getBookingStatus() == Booking.BookingStatus.CHECKED_OUT) {
+                        checkedOut++;
+                    } else if (b.getBookingStatus() == Booking.BookingStatus.CANCELLED) {
+                        cancelled++;
+                    }
                 }
             }
         }
@@ -497,15 +499,17 @@ public class RegistrationControl {
 
         for (int i = 1; i <= App.bookingHistoryList.getNumberOfEntries(); i++) {
             Booking b = App.bookingHistoryList.getEntry(i);
-            
-            // Assuming revenue is realized on checkout date (bookingDate in history)
-            LocalDate date = b.getBookingDate(); 
 
-            if (b.getBookingStatus() == Booking.BookingStatus.CHECKED_OUT && 
-                date != null && date.getYear() == year && date.getMonthValue() == month) {
+            // Assuming revenue is realized on checkout date (bookingDate in history)
+            LocalDate date = b.getBookingDate();
+
+            if (b.getBookingStatus() == Booking.BookingStatus.CHECKED_OUT
+                    && date != null && date.getYear() == year && date.getMonthValue() == month) {
 
                 Room room = b.getRoom();
-                if (typeFilter != null && (room == null || room.getRoomType() != typeFilter)) continue;
+                if (typeFilter != null && (room == null || room.getRoomType() != typeFilter)) {
+                    continue;
+                }
 
                 double rate = (room != null) ? room.getRoomType().getBaseRate() : 0.0;
 
@@ -513,7 +517,9 @@ public class RegistrationControl {
                 LocalDate scheduledCheckOut = b.getCheckOutDate();
 
                 long scheduledNights = java.time.temporal.ChronoUnit.DAYS.between(checkIn, scheduledCheckOut);
-                if (scheduledNights <= 0) scheduledNights = 1;
+                if (scheduledNights <= 0) {
+                    scheduledNights = 1;
+                }
 
                 long overstayDays = java.time.temporal.ChronoUnit.DAYS.between(scheduledCheckOut, date);
                 double revenueForBooking = 0;
@@ -526,12 +532,14 @@ public class RegistrationControl {
                     revenueForBooking = normal + penalty;
                 } else {
                     long actualNights = java.time.temporal.ChronoUnit.DAYS.between(checkIn, date);
-                    if (actualNights <= 0) actualNights = 1;
+                    if (actualNights <= 0) {
+                        actualNights = 1;
+                    }
                     double normal = (actualNights * rate);
                     totalNormal += normal;
                     revenueForBooking = normal;
                 }
-                
+
                 dailyRevenue[date.getDayOfMonth()] += revenueForBooking;
             }
         }
