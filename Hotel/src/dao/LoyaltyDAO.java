@@ -49,12 +49,19 @@ public class LoyaltyDAO {
 
     // ---------------------------------------------------------
     // Sample points transactions, for demonstrating the Points Expiry
-    // Alert feature. Reads member ID/name directly from whichever
+    // Alert feature. Reads member ID/name/points directly from whichever
     // memberList is passed in (this DAO's own standalone seed data, OR
     // the shared App.memberList when integrated) - so the seeded
     // transactions always match real members, regardless of mode.
-    // A few are backdated close to the validity period so the alert
-    // report has something to show.
+    //
+    // IMPORTANT: each transaction's pointsEarned is taken directly from
+    // member.getLoyaltyPoints() (NOT a separately hardcoded number), so
+    // the total shown in View Points Transactions is guaranteed to match
+    // the balance shown in Generate Loyalty Report from the very start.
+    // A member with 0 points gets no transaction record at all (there is
+    // nothing outstanding to track). Earned dates are staggered across a
+    // small set of demo dates purely so the Points Expiry Alert report
+    // has a mix of soon-expiring and not-soon-expiring members to show.
     // ---------------------------------------------------------
     public ListInterface<PointsTransaction> initializeTransactionData(ListInterface<Member> memberList, int pointsValidityMonths) {
         ListInterface<PointsTransaction> transactionList = new DoublyLinkedList<>();
@@ -65,24 +72,29 @@ public class LoyaltyDAO {
             return transactionList; // no members available to seed transactions for
         }
 
-        addSampleTransaction(transactionList, memberList, 1, 500, today.minusMonths(11).minusDays(24), pointsValidityMonths);            // ~6 days left
-        addSampleTransaction(transactionList, memberList, Math.min(5, total), 200, today.minusMonths(11).minusDays(19), pointsValidityMonths); // ~11 days left
-        addSampleTransaction(transactionList, memberList, 1, 300, today.minusMonths(11).minusDays(12), pointsValidityMonths);            // ~18 days left
-        addSampleTransaction(transactionList, memberList, Math.min(2, total), 1000, today.minusMonths(2), pointsValidityMonths);
-        addSampleTransaction(transactionList, memberList, Math.min(3, total), 500, today.minusMonths(1), pointsValidityMonths);
-        addSampleTransaction(transactionList, memberList, Math.min(4, total), 200, today.minusDays(10), pointsValidityMonths);
-        addSampleTransaction(transactionList, memberList, Math.min(6, total), 80, today.minusDays(5), pointsValidityMonths);
+        // demo earnedDates cycled across members purely to showcase a mix of
+        // "expiring soon" and "not expiring soon" rows in the alert report
+        LocalDate[] demoEarnedDates = {
+            today.minusMonths(11).minusDays(24), // ~6 days left
+            today.minusMonths(11).minusDays(19), // ~11 days left
+            today.minusMonths(2),
+            today.minusMonths(1),
+            today.minusMonths(11).minusDays(12), // ~18 days left
+            today.minusDays(5)
+        };
+
+        for (int i = 1; i <= total; i++) {
+            Member member = memberList.getEntry(i);
+            int points = member.getLoyaltyPoints();
+            if (points <= 0) {
+                continue; // nothing outstanding to track for this member
+            }
+            LocalDate earnedDate = demoEarnedDates[(i - 1) % demoEarnedDates.length];
+            LocalDate expiryDate = earnedDate.plusMonths(pointsValidityMonths);
+            transactionList.add(new PointsTransaction(member.getMemberID(), member.getMemberName(),
+                    points, earnedDate, expiryDate));
+        }
 
         return transactionList;
-    }
-
-    private void addSampleTransaction(ListInterface<PointsTransaction> transactionList, ListInterface<Member> memberList,
-                                       int position, int points, LocalDate earnedDate, int pointsValidityMonths) {
-        if (position < 1 || position > memberList.getNumberOfEntries()) {
-            return;
-        }
-        Member member = memberList.getEntry(position);
-        LocalDate expiryDate = earnedDate.plusMonths(pointsValidityMonths);
-        transactionList.add(new PointsTransaction(member.getMemberID(), member.getMemberName(), points, earnedDate, expiryDate));
     }
 }

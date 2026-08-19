@@ -112,8 +112,22 @@ public class LoyaltyControl {
 
         LocalDate earnedDate = VirtualClock.getInstance().today();
         LocalDate expiryDate = earnedDate.plusMonths(POINTS_VALIDITY_MONTHS);
-        transactionList.add(new PointsTransaction(member.getMemberID(), member.getMemberName(),
-                pointsEarned, earnedDate, expiryDate));
+
+        // Each member has ONE consolidated points-transaction record (not a
+        // separate batch per earn) - View Points Transactions should always
+        // show a single row per member with their combined point total.
+        // Earning more points adds onto that existing record and resets its
+        // expiry to count down from today again; a member with no record
+        // yet gets a new one.
+        PointsTransaction existing = findTransactionByMemberID(memberID);
+        if (existing != null) {
+            existing.setPointsEarned(existing.getPointsEarned() + pointsEarned);
+            existing.setEarnedDate(earnedDate);
+            existing.setExpiryDate(expiryDate);
+        } else {
+            transactionList.add(new PointsTransaction(member.getMemberID(), member.getMemberName(),
+                    pointsEarned, earnedDate, expiryDate));
+        }
 
         StringBuilder sb = new StringBuilder();
         sb.append(member.getMemberName()).append(" earned ").append(pointsEarned)
@@ -122,6 +136,18 @@ public class LoyaltyControl {
             sb.append("\n").append(tierMessage);
         }
         return sb.toString();
+    }
+
+    // Returns the given member's single consolidated points-transaction
+    // record, or null if the member has never earned any points yet.
+    private PointsTransaction findTransactionByMemberID(int memberID) {
+        for (int i = 1; i <= transactionList.getNumberOfEntries(); i++) {
+            PointsTransaction t = transactionList.getEntry(i);
+            if (t.getMemberID() == memberID) {
+                return t;
+            }
+        }
+        return null;
     }
 
     // =========================================================
@@ -144,6 +170,16 @@ public class LoyaltyControl {
 
         member.setLoyaltyPoints(member.getLoyaltyPoints() - reward.getPointsRequired());
         String tierMessage = updateTier(member);
+
+        // Redeeming only lowers the points on the member's consolidated
+        // transaction record - the expiry date stays exactly as it was.
+        // Redemption doesn't earn anything new, so it shouldn't push the
+        // countdown back out.
+        PointsTransaction existing = findTransactionByMemberID(member.getMemberID());
+        if (existing != null) {
+            int remainingPoints = existing.getPointsEarned() - reward.getPointsRequired();
+            existing.setPointsEarned(Math.max(remainingPoints, 0));
+        }
 
         StringBuilder sb = new StringBuilder();
         sb.append(member.getMemberName()).append(" redeemed \"").append(reward.getRewardName())
