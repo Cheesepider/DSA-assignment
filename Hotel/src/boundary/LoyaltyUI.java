@@ -8,6 +8,10 @@ import entity.Member;
 import entity.Member.LoyaltyTier;
 import utility.ValidationUtility;
 
+/**
+ 
+ * @author : Kao Yong Feng
+ */
 public class LoyaltyUI {
 
     private LoyaltyControl loyaltyControl;
@@ -46,6 +50,7 @@ public class LoyaltyUI {
             System.out.println("6. Generate Loyalty Report (Ranked by Points)");
             System.out.println("7. Generate Tier Distribution Report");
             System.out.println("8. View Points Transactions (Alerts / Full History)");
+            System.out.println("9. Generate VIP Eligibility & Reward Readiness Report");
             System.out.println("0. Exit Loyalty Module");
             System.out.println("===============================================");
             System.out.print("Please select an option: ");
@@ -76,6 +81,9 @@ public class LoyaltyUI {
                     break;
                 case 8:
                     viewTransactionsUI();
+                    break;
+                case 9:
+                    vipEligibilityReportUI();
                     break;
                 case 0:
                     System.out.println("Exiting Loyalty & Reward Module...");
@@ -118,14 +126,14 @@ public class LoyaltyUI {
             case 2:
                 System.out.print("Enter name keyword: ");
                 String name = scanner.nextLine();
-                printMemberList(loyaltyControl.searchMemberByName(name));
+                System.out.println(loyaltyControl.formatMemberList(loyaltyControl.searchMemberByName(name)));
                 break;
             case 3:
                 System.out.print("Enter tier (Regular / Platinum / Diamond / Elite): ");
                 String tierInput = scanner.nextLine();
                 try {
                     LoyaltyTier tier = LoyaltyTier.valueOf(tierInput.trim());
-                    printMemberList(loyaltyControl.searchMemberByTier(tier));
+                    System.out.println(loyaltyControl.formatMemberList(loyaltyControl.searchMemberByTier(tier)));
                 } catch (IllegalArgumentException e) {
                     System.out.println("Invalid tier entered.");
                 }
@@ -151,6 +159,24 @@ public class LoyaltyUI {
             default:
                 System.out.println("Invalid option.");
         }
+    }
+
+    private void vipEligibilityReportUI() {
+        System.out.print("Minimum tier to include (Regular / Platinum / Diamond / Elite): ");
+        String tierInput = scanner.nextLine();
+        LoyaltyTier minTier;
+        try {
+            minTier = LoyaltyTier.valueOf(tierInput.trim());
+        } catch (IllegalArgumentException e) {
+            System.out.println("Invalid tier entered.");
+            return;
+        }
+        System.out.print("Minimum points required: ");
+        int minPoints = ValidationUtility.inputChoice(scanner);
+        System.out.println(loyaltyControl.displayRewardCatalog());
+        System.out.print("Enter Reward ID to check redemption readiness for: ");
+        int rewardID = ValidationUtility.inputChoice(scanner);
+        System.out.println(loyaltyControl.generateVIPEligibilityReport(minTier, minPoints, rewardID));
     }
 
     private void manageRewardCatalogUI() {
@@ -189,16 +215,6 @@ public class LoyaltyUI {
                 break;
             default:
                 System.out.println("Invalid option.");
-        }
-    }
-
-    private void printMemberList(ListInterface<Member> list) {
-        if (list.isEmpty()) {
-            System.out.println("No matching members found.");
-            return;
-        }
-        for (int i = 1; i <= list.getNumberOfEntries(); i++) {
-            System.out.println(list.getEntry(i));
         }
     }
 

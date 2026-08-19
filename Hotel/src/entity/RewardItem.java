@@ -7,7 +7,7 @@ import java.util.concurrent.atomic.AtomicInteger;
  * points. Plain old Java object (POJO) - no input/output statements here,
  * as per assignment guidelines.
  *
- * @author (Loyalty & Reward Service module)
+ * @author: Kao Yong FEng
  */
 public class RewardItem {
 

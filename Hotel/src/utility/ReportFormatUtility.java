@@ -23,7 +23,7 @@ import java.time.format.DateTimeFormatter;
  * Allowed per Assignment Q&A 1.1.6: "Yes, you may use any Java
  * interfaces and classes that are not collections."
  *
- * @author (Loyalty & Reward Service module)
+ * @author: Kao Yong Feng
  */
 public class ReportFormatUtility {
 
