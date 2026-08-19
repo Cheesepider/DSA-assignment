@@ -4,6 +4,10 @@
  */
 package control;
 
+/**
+ * @author Tham Cle Ment
+ */
+
 import entity.Member;
 import entity.Booking;
 import entity.Room;
