@@ -348,11 +348,18 @@ public class LoyaltyControl {
         sb.append(ReportFormatUtility.separatorLine());
 
         int total = sortedList.getNumberOfEntries();
+        String[] labels = new String[total];
+        int[] points = new int[total];
         for (int i = 1; i <= total; i++) {
             Member m = sortedList.getEntry(i);
             sb.append(String.format("%-5d %-10d %-20s %-12s %-10d%n",
                     i, m.getMemberID(), m.getMemberName(), m.getLoyaltyTier(), m.getLoyaltyPoints()));
+            labels[i - 1] = m.getMemberName();
+            points[i - 1] = m.getLoyaltyPoints();
         }
+
+        sb.append(ReportFormatUtility.separatorLine());
+        sb.append(ReportFormatUtility.buildBarChart("POINTS DISTRIBUTION", labels, points, "points"));
         sb.append(ReportFormatUtility.buildFooter("Total members displayed", total));
         return sb.toString();
     }
@@ -379,12 +386,21 @@ public class LoyaltyControl {
         sb.append(String.format("%-12s %-14s %-16s %-12s%n", "Tier", "No. Members", "Total Points", "Avg Points"));
         sb.append(ReportFormatUtility.separatorLine());
 
+        int total = tiers.length;
+        String[] tierLabels = new String[total];
+        int[] tierMemberCounts = new int[total];
+        int chartIndex = 0;
         for (int i = tiers.length - 1; i >= 0; i--) { // display highest tier (Elite) first
             int count = memberCount[i];
             int avg = count == 0 ? 0 : totalPoints[i] / count;
             sb.append(String.format("%-12s %-14d %-16d %-12d%n", tiers[i], count, totalPoints[i], avg));
+            tierLabels[chartIndex] = tiers[i].toString();
+            tierMemberCounts[chartIndex] = count;
+            chartIndex++;
         }
 
+        sb.append(ReportFormatUtility.separatorLine());
+        sb.append(ReportFormatUtility.buildBarChart("MEMBER COUNT BY TIER", tierLabels, tierMemberCounts, "member(s)"));
         sb.append(ReportFormatUtility.buildFooter("Total members in program", totalMembers));
         return sb.toString();
     }
@@ -457,14 +473,22 @@ public class LoyaltyControl {
         sb.append(ReportFormatUtility.separatorLine());
 
         int total = list.getNumberOfEntries();
+        String[] labels = new String[total];
+        int[] daysLeftValues = new int[total];
         for (int i = 1; i <= total; i++) {
             PointsTransaction t = list.getEntry(i);
             long daysLeft = ChronoUnit.DAYS.between(today, t.getExpiryDate());
             sb.append(String.format("%-10d %-18s %-8d %-13s %-13s %-10d%n",
                     t.getMemberID(), t.getMemberName(), t.getPointsEarned(),
                     t.getEarnedDate().format(dateFormatter), t.getExpiryDate().format(dateFormatter), daysLeft));
+            labels[i - 1] = t.getMemberName();
+            daysLeftValues[i - 1] = (int) Math.max(0, daysLeft);
         }
 
+        if (total > 0) {
+            sb.append(ReportFormatUtility.separatorLine());
+            sb.append(ReportFormatUtility.buildBarChart("DAYS LEFT UNTIL EXPIRY", labels, daysLeftValues, "days"));
+        }
         sb.append(ReportFormatUtility.buildFooter("Total transactions", total, emptyMessage));
         return sb.toString();
     }

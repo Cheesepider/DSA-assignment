@@ -16,10 +16,7 @@ import utility.VirtualClock;
  */
 public class LoyaltyDAO {
 
-    // ---------------------------------------------------------
-    // Reward catalog - used in both standalone and integrated mode,
-    // since rewards are specific to this module only.
-    // ---------------------------------------------------------
+   
     public ListInterface<RewardItem> initializeRewardCatalog() {
         ListInterface<RewardItem> rewardCatalog = new DoublyLinkedList<>();
 
