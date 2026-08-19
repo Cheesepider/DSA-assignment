@@ -20,21 +20,23 @@ import utility.VirtualClock;
  * Control class for the Loyalty & Reward Service module.
  * Handles: earning points, redeeming rewards, automatic tier
  * upgrade/downgrade, member search (by ID/name/tier), reward catalog CRUD,
- * and generating reports (ranking, tier distribution, points expiry,
- * VIP eligibility).
+ * and generating reports (ranking, tier distribution, points expiry).
  *
  * Sorting and searching algorithms are self-implemented (selection sort,
  * bubble sort, insertion sort, binary search, linear search) using the
- * team's shared ListInterface operations - including swap(), copy() and
- * indexOf(), the new operations added to the team's ADT. No
- * java.util.Collections / Arrays.sort / Java Collections Framework is
- * used anywhere.
+ * team's shared ListInterface operations - including swap(), the new
+ * operation added to the team's ADT. No java.util.Collections /
+ * Arrays.sort / Java Collections Framework is used anywhere.
  *
  * All date/time values come from utility.VirtualClock rather than the
  * real system clock, so the module stays in sync with the rest of the
  * application when the demo clock is advanced.
- *
- * @author:  Kao Yong Feng
+ */
+
+/**
+ 
+ * @author : Kao Yong Feng
+ */
 public class LoyaltyControl {
 
     private ListInterface<Member> memberList;
@@ -257,23 +259,6 @@ public class LoyaltyControl {
         return results;
     }
 
-    // Builds a plain-text listing of the given member list, one line per
-    // member. Exists so LoyaltyUI (boundary) never has to call ADT methods
-    // (isEmpty/getNumberOfEntries/getEntry) on a ListInterface directly -
-    // per the ECB constraint "boundary objects may communicate with actors
-    // and control objects only", the boundary layer should only ever
-    // receive an already-formatted String back from control.
-    public String formatMemberList(ListInterface<Member> list) {
-        if (list.isEmpty()) {
-            return "No matching members found.";
-        }
-        StringBuilder sb = new StringBuilder();
-        for (int i = 1; i <= list.getNumberOfEntries(); i++) {
-            sb.append(list.getEntry(i)).append("\n");
-        }
-        return sb.toString();
-    }
-
     // binary search on a member-ID-sorted copy of the list
     private Member findMemberByID(int memberID) {
         ListInterface<Member> sortedCopy = memberList.copy();
@@ -426,66 +411,6 @@ public class LoyaltyControl {
     }
 
     // =========================================================
-    // Use Case 6b: VIP Eligibility & Reward Readiness Report
-    // Demonstrates, in a single algorithm: (1) a multi-criteria FILTER
-    // (tier AND minimum points), (2) SORTING the filtered result
-    // (self-implemented bubble sort via swap()), and (3) a SEARCH on the
-    // reward catalog (indexOf()/contains()) to check whether a
-    // highlighted reward exists and who can currently afford it.
-    // =========================================================
-    public String generateVIPEligibilityReport(LoyaltyTier minTier, int minPoints, int highlightRewardID) {
-        // --- 1) FILTER: multi-criteria (tier AND points threshold) ---
-        ListInterface<Member> eligible = new DoublyLinkedList<>();
-        for (int i = 1; i <= memberList.getNumberOfEntries(); i++) {
-            Member m = memberList.getEntry(i);
-            if (m.getLoyaltyTier().ordinal() >= minTier.ordinal() && m.getLoyaltyPoints() >= minPoints) {
-                eligible.add(m);
-            }
-        }
-
-        // --- 2) SORT: rank the filtered members by points, descending ---
-        bubbleSortByPointsDescending(eligible);
-
-        // --- 3) SEARCH: does the highlighted reward exist in the catalog? ---
-        // contains() confirms existence; indexOf() then locates it so we
-        // can read its details. Both are ADT search operations, run
-        // against rewardCatalog rather than memberList, in the same report.
-        RewardItem probe = new RewardItem();
-        probe.setRewardID(highlightRewardID);
-        boolean rewardExists = rewardCatalog.contains(probe);
-        RewardItem highlightReward = rewardExists ? rewardCatalog.getEntry(rewardCatalog.indexOf(probe)) : null;
-
-        StringBuilder sb = new StringBuilder();
-        sb.append(ReportFormatUtility.buildHeader("VIP ELIGIBILITY & REWARD READINESS REPORT",
-                VirtualClock.getInstance().now()));
-        sb.append("Filter: Tier >= ").append(minTier).append(" AND Points >= ").append(minPoints).append("\n");
-        if (rewardExists) {
-            sb.append("Highlighted Reward: ").append(highlightReward.getRewardName())
-              .append(" (ID ").append(highlightRewardID).append(", ")
-              .append(highlightReward.getPointsRequired()).append(" points required)\n");
-        } else {
-            sb.append("Highlighted Reward: ID ").append(highlightRewardID).append(" not found in catalog.\n");
-        }
-        sb.append(ReportFormatUtility.separatorLine());
-        sb.append(String.format("%-5s %-10s %-20s %-12s %-10s %-10s%n",
-                "Rank", "Member ID", "Member Name", "Tier", "Points", "Can Redeem?"));
-        sb.append(ReportFormatUtility.separatorLine());
-
-        int total = eligible.getNumberOfEntries();
-        for (int i = 1; i <= total; i++) {
-            Member m = eligible.getEntry(i);
-            String canRedeem = (rewardExists && m.getLoyaltyPoints() >= highlightReward.getPointsRequired())
-                    ? "Yes" : "No";
-            sb.append(String.format("%-5d %-10d %-20s %-12s %-10d %-10s%n",
-                    i, m.getMemberID(), m.getMemberName(), m.getLoyaltyTier(), m.getLoyaltyPoints(), canRedeem));
-        }
-
-        sb.append(ReportFormatUtility.buildFooter("Total VIP-eligible members", total,
-                "No members currently meet this tier/points combination."));
-        return sb.toString();
-    }
-
-    // =========================================================
     // Use Case 7: Points Expiry Notifications / Alert
     // =========================================================
 
@@ -592,33 +517,22 @@ public class LoyaltyControl {
     }
 
     // ---- Update ----
-    // Builds a brand-new RewardItem (preserving the original rewardID via
-    // setRewardID, since the constructor would otherwise mint a fresh ID
-    // from the counter) and swaps it into the catalog using the ADT's
-    // replace() operation, instead of mutating the existing object's
-    // fields in place. This is a deliberate use of ListInterface.replace().
     public String updateRewardItem(int rewardID, String newName, String newDescription, int newPointsRequired) {
         int position = findRewardPosition(rewardID);
         if (position == -1) {
             return "Reward with ID " + rewardID + " not found in catalog.";
         }
-        if (newName == null || newName.trim().isEmpty()) {
-            return "Reward name cannot be empty.";
-        }
         if (newPointsRequired <= 0) {
             return "Points required must be a positive value.";
         }
-
-        RewardItem updatedReward = new RewardItem();
-        updatedReward.setRewardID(rewardID);
-        updatedReward.setRewardName(newName);
-        updatedReward.setDescription(newDescription);
-        updatedReward.setPointsRequired(newPointsRequired);
-
-        boolean replaced = rewardCatalog.replace(position, updatedReward);
-        if (!replaced) {
-            return "Failed to update reward ID " + rewardID + " (unexpected error).";
-        }
+        // existingReward is the same object reference stored inside
+        // rewardCatalog, so mutating its fields here already updates the
+        // catalog directly - no replace() call is needed (same reasoning
+        // as earnPoints()/redeemReward() mutating Member directly)
+        RewardItem existingReward = rewardCatalog.getEntry(position);
+        existingReward.setRewardName(newName);
+        existingReward.setDescription(newDescription);
+        existingReward.setPointsRequired(newPointsRequired);
         return "Reward ID " + rewardID + " updated successfully.";
     }
 
