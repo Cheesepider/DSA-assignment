@@ -6,7 +6,7 @@ package utility;
 
 /**
  *
- * @author jlohz
+ * @author Jerry
  */
 import java.time.LocalDate;
 import java.time.format.DateTimeParseException;

@@ -68,9 +68,9 @@ public class RegistrationDAO {
     }
 
     // -------------------------
-// BOOKINGS
-// -------------------------
-    public static void initializeBookingData() {
+    // BOOKINGS
+    // -------------------------
+    public static void initializeBookingData() {  //* @author Jerry
 
         // Existing shared members
         Member alice = App.memberList.getEntry(1);  // Regular
