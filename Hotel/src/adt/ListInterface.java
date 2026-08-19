@@ -6,7 +6,7 @@ package adt;
 
 /**
  *
- * @author jlohz， Kao Yong Feng
+ * @author Jerry,KaoYongFeng,LeeShenFung,ThamClement
  */
 public interface ListInterface<T> {
 
@@ -25,7 +25,7 @@ public interface ListInterface<T> {
     boolean isEmpty();
 
     int getNumberOfEntries();
-    
+
     void swap(int position1, int position2);
 
     void clear();

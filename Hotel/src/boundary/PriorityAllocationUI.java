@@ -6,7 +6,7 @@ package boundary;
 
 /**
  *
- * @author jlohz
+ * @author Jerry
  */
 import java.time.LocalDate;
 import java.time.LocalDateTime;
