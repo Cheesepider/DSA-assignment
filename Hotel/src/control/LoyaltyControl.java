@@ -89,7 +89,8 @@ public class LoyaltyControl {
         ensureSharedDataInitialized();
     }
 
-    
+    // guards one-time seeding below; App's lists themselves are never null
+    // (they are instantiated as empty DoublyLinkedLists directly in App.java)
     private static boolean sharedDataInitialized = false;
 
     private static void ensureSharedDataInitialized() {
@@ -511,6 +512,40 @@ public class LoyaltyControl {
         }
     }
 
+    // insertion sort by member name, A-Z (case-insensitive)
+    private void insertionSortByNameAscending(ListInterface<Member> list) {
+        int n = list.getNumberOfEntries();
+        for (int i = 2; i <= n; i++) {
+            int j = i;
+            while (j > 1 && list.getEntry(j).getMemberName()
+                    .compareToIgnoreCase(list.getEntry(j - 1).getMemberName()) < 0) {
+                list.swap(j, j - 1);
+                j--;
+            }
+        }
+    }
+
+    // selection sort: primary key tier descending (Elite first), tie-broken by points descending
+    private void selectionSortByTierThenPointsDescending(ListInterface<Member> list) {
+        int n = list.getNumberOfEntries();
+        for (int i = 1; i <= n - 1; i++) {
+            int bestPos = i;
+            for (int j = i + 1; j <= n; j++) {
+                Member candidate = list.getEntry(j);
+                Member best = list.getEntry(bestPos);
+                boolean candidateBetter = candidate.getLoyaltyTier().ordinal() != best.getLoyaltyTier().ordinal()
+                        ? candidate.getLoyaltyTier().ordinal() > best.getLoyaltyTier().ordinal()
+                        : candidate.getLoyaltyPoints() > best.getLoyaltyPoints();
+                if (candidateBetter) {
+                    bestPos = j;
+                }
+            }
+            if (bestPos != i) {
+                list.swap(i, bestPos);
+            }
+        }
+    }
+
     private void insertionSortByExpiryDate(ListInterface<PointsTransaction> list) {
         int n = list.getNumberOfEntries();
         for (int i = 2; i <= n; i++) {
@@ -523,21 +558,99 @@ public class LoyaltyControl {
     }
 
     
-    public String generateLoyaltyReport() {
-        ListInterface<Member> sortedList = memberList.copy();
-        bubbleSortByPointsDescending(sortedList);
+    private ListInterface<Member> filterMembers(String searchKeyword) {
+        ListInterface<Member> filtered = new DoublyLinkedList<>();
+        if (searchKeyword == null || searchKeyword.trim().isEmpty()) {
+            for (int i = 1; i <= memberList.getNumberOfEntries(); i++) {
+                filtered.add(memberList.getEntry(i));
+            }
+            return filtered;
+        }
+
+        String keyword = searchKeyword.trim();
+
+        try {
+            int memberID = Integer.parseInt(keyword);
+            Member match = findMemberByID(memberID);
+            if (match != null) {
+                filtered.add(match);
+            }
+            return filtered;
+        } catch (NumberFormatException e) {
+            
+        }
+
+        for (LoyaltyTier tier : LoyaltyTier.values()) {
+            if (tier.name().equalsIgnoreCase(keyword)) {
+                for (int i = 1; i <= memberList.getNumberOfEntries(); i++) {
+                    Member m = memberList.getEntry(i);
+                    if (m.getLoyaltyTier() == tier) {
+                        filtered.add(m);
+                    }
+                }
+                return filtered;
+            }
+        }
+
+        for (int i = 1; i <= memberList.getNumberOfEntries(); i++) {
+            Member m = memberList.getEntry(i);
+            if (m.getMemberName().toLowerCase().contains(keyword.toLowerCase())) {
+                filtered.add(m);
+            }
+        }
+        return filtered;
+    }
+
+   
+    public static final int SORT_BY_POINTS = 1;
+    public static final int SORT_BY_NAME = 2;
+    public static final int SORT_BY_TIER = 3;
+    public static final int SORT_BY_MEMBER_ID = 4;
+
+    private String sortOptionLabel(int sortOption) {
+        switch (sortOption) {
+            case SORT_BY_NAME: return "Name (A-Z)";
+            case SORT_BY_TIER: return "Tier (High-Low)";
+            case SORT_BY_MEMBER_ID: return "Member ID (Ascending)";
+            default: return "Points (High-Low)";
+        }
+    }
+
+    // Ranks members by points, with search + sort support.
+    public String generateLoyaltyReport(String searchKeyword, int sortOption) {
+        ListInterface<Member> filtered = filterMembers(searchKeyword);
+
+        switch (sortOption) {
+            case SORT_BY_NAME:
+                insertionSortByNameAscending(filtered);
+                break;
+            case SORT_BY_TIER:
+                selectionSortByTierThenPointsDescending(filtered);
+                break;
+            case SORT_BY_MEMBER_ID:
+                selectionSortByID(filtered);
+                break;
+            default:
+                bubbleSortByPointsDescending(filtered);
+                break;
+        }
+
+        String filterLabel = (searchKeyword == null || searchKeyword.trim().isEmpty())
+                ? "All Members" : "\"" + searchKeyword.trim() + "\"";
 
         StringBuilder sb = new StringBuilder();
-        sb.append(ReportFormatUtility.buildHeader("MEMBER RANKING REPORT (BY POINTS)", VirtualClock.getInstance().now()));
+        sb.append(ReportFormatUtility.buildHeader("LOYALTY REPORT (RANKED BY POINTS)", VirtualClock.getInstance().now()));
+        sb.append("Search: ").append(filterLabel).append("   |   Sort: ").append(sortOptionLabel(sortOption)).append("\n");
+        sb.append(ReportFormatUtility.separatorLine());
         sb.append(String.format("%-5s %-10s %-20s %-12s %-10s %-15s%n",
                 "Rank", "Member ID", "Member Name", "Tier", "Points", "Lifetime Earned"));
         sb.append(ReportFormatUtility.separatorLine());
 
-        int total = sortedList.getNumberOfEntries();
+        int total = filtered.getNumberOfEntries();
         String[] labels = new String[total];
         int[] points = new int[total];
         for (int i = 1; i <= total; i++) {
-            Member m = sortedList.getEntry(i);
+            Member m = filtered.getEntry(i);
             sb.append(String.format("%-5d %-10d %-20s %-12s %-10d %-15d%n",
                     i, m.getMemberID(), m.getMemberName(), m.getLoyaltyTier(), m.getLoyaltyPoints(),
                     getLifetimeEarned(m.getMemberID())));
@@ -548,47 +661,11 @@ public class LoyaltyControl {
         sb.append(ReportFormatUtility.separatorLine());
         sb.append("Note: Points = current spendable balance. Lifetime Earned = total ever earned")
           .append(" (used to determine Tier; unaffected by redemption or expiry).\n");
-        sb.append(ReportFormatUtility.buildBarChart("POINTS DISTRIBUTION", labels, points, "points"));
-        sb.append(ReportFormatUtility.buildFooter("Total members displayed", total));
-        return sb.toString();
-    }
-
- 
-    public String generateTierDistributionReport() {
-        LoyaltyTier[] tiers = LoyaltyTier.values();
-        int[] memberCount = new int[tiers.length];
-        int[] totalPoints = new int[tiers.length];
-
-        for (int i = 1; i <= memberList.getNumberOfEntries(); i++) {
-            Member m = memberList.getEntry(i);
-            int tierIndex = m.getLoyaltyTier().ordinal();
-            memberCount[tierIndex]++;
-            totalPoints[tierIndex] += m.getLoyaltyPoints();
+        if (total > 0) {
+            sb.append(ReportFormatUtility.buildBarChart("POINTS DISTRIBUTION", labels, points, "points"));
         }
 
-        int totalMembers = memberList.getNumberOfEntries();
-
-        StringBuilder sb = new StringBuilder();
-        sb.append(ReportFormatUtility.buildHeader("TIER DISTRIBUTION SUMMARY REPORT", VirtualClock.getInstance().now()));
-        sb.append(String.format("%-12s %-14s %-16s %-12s%n", "Tier", "No. Members", "Total Points", "Avg Points"));
-        sb.append(ReportFormatUtility.separatorLine());
-
-        int total = tiers.length;
-        String[] tierLabels = new String[total];
-        int[] tierMemberCounts = new int[total];
-        int chartIndex = 0;
-        for (int i = tiers.length - 1; i >= 0; i--) { // display highest tier (Elite) first
-            int count = memberCount[i];
-            int avg = count == 0 ? 0 : totalPoints[i] / count;
-            sb.append(String.format("%-12s %-14d %-16d %-12d%n", tiers[i], count, totalPoints[i], avg));
-            tierLabels[chartIndex] = tiers[i].toString();
-            tierMemberCounts[chartIndex] = count;
-            chartIndex++;
-        }
-
-        sb.append(ReportFormatUtility.separatorLine());
-        sb.append(ReportFormatUtility.buildBarChart("MEMBER COUNT BY TIER", tierLabels, tierMemberCounts, "member(s)"));
-        sb.append(ReportFormatUtility.buildFooter("Total members in program", totalMembers));
+        sb.append(ReportFormatUtility.buildFooter("Total members displayed", total, "No members match this search."));
         return sb.toString();
     }
 
@@ -712,53 +789,175 @@ public class LoyaltyControl {
         return sb.toString();
     }
 
-    public ListInterface<RedemptionRecord> searchRedemptionsByMemberID(int memberID) {
-        ListInterface<RedemptionRecord> results = new DoublyLinkedList<>();
+    // Matches a search keyword against redemption history: an exact Member ID
+    // if the keyword is numeric, else a case-insensitive substring match on
+    // either the member's name or the reward's name. Blank/null keyword
+    // returns the full redemption history (i.e. "no filter applied").
+    private ListInterface<RedemptionRecord> filterRedemptions(String searchKeyword) {
+        ListInterface<RedemptionRecord> filtered = new DoublyLinkedList<>();
+        if (searchKeyword == null || searchKeyword.trim().isEmpty()) {
+            for (int i = 1; i <= App.redemptionHistoryList.getNumberOfEntries(); i++) {
+                filtered.add(App.redemptionHistoryList.getEntry(i));
+            }
+            return filtered;
+        }
+
+        String keyword = searchKeyword.trim();
+
+        try {
+            int memberID = Integer.parseInt(keyword);
+            for (int i = 1; i <= App.redemptionHistoryList.getNumberOfEntries(); i++) {
+                RedemptionRecord r = App.redemptionHistoryList.getEntry(i);
+                if (r.getMemberID() == memberID) {
+                    filtered.add(r);
+                }
+            }
+            return filtered;
+        } catch (NumberFormatException e) {
+            // not a Member ID - fall through to name / reward text search
+        }
+
         for (int i = 1; i <= App.redemptionHistoryList.getNumberOfEntries(); i++) {
             RedemptionRecord r = App.redemptionHistoryList.getEntry(i);
-            if (r.getMemberID() == memberID) {
-                results.add(r);
+            if (r.getMemberName().toLowerCase().contains(keyword.toLowerCase())
+                    || r.getRewardName().toLowerCase().contains(keyword.toLowerCase())) {
+                filtered.add(r);
             }
         }
-        return results;
+        return filtered;
     }
 
-    public String generateMemberRedemptionReport(int memberID) {
-        Member member = findMemberByID(memberID);
-        if (member == null) {
-            return "Member with ID " + memberID + " not found.";
+    // sortOption: 1 = Date (Newest First, default), 2 = Points Used (High-Low),
+    // 3 = Member Name (A-Z), 4 = Reward Name (A-Z)
+    public static final int REDEMPTION_SORT_BY_DATE = 1;
+    public static final int REDEMPTION_SORT_BY_POINTS = 2;
+    public static final int REDEMPTION_SORT_BY_MEMBER_NAME = 3;
+    public static final int REDEMPTION_SORT_BY_REWARD_NAME = 4;
+
+    private String redemptionSortOptionLabel(int sortOption) {
+        switch (sortOption) {
+            case REDEMPTION_SORT_BY_POINTS: return "Points Used (High-Low)";
+            case REDEMPTION_SORT_BY_MEMBER_NAME: return "Member Name (A-Z)";
+            case REDEMPTION_SORT_BY_REWARD_NAME: return "Reward Name (A-Z)";
+            default: return "Date (Newest First)";
         }
-        ListInterface<RedemptionRecord> memberRedemptions = searchRedemptionsByMemberID(memberID);
-        return buildRedemptionReport(memberRedemptions,
-                "REDEMPTION HISTORY - " + member.getMemberName() + " (ID " + memberID + ")",
-                member.getMemberName() + " has not redeemed any rewards yet.");
     }
 
-    public String generateAllRedemptionsReport() {
-        return buildRedemptionReport(App.redemptionHistoryList,
-                "ALL REWARD REDEMPTIONS (Full History)",
-                "No rewards have been redeemed yet.");
+    // insertion sort by redeemed date, newest first
+    private void insertionSortRedemptionsByDateDescending(ListInterface<RedemptionRecord> list) {
+        int n = list.getNumberOfEntries();
+        for (int i = 2; i <= n; i++) {
+            int j = i;
+            while (j > 1 && list.getEntry(j).getRedeemedDate().isAfter(list.getEntry(j - 1).getRedeemedDate())) {
+                list.swap(j, j - 1);
+                j--;
+            }
+        }
     }
 
-    // shared formatting logic for both the per-member and full-history redemption reports
-    private String buildRedemptionReport(ListInterface<RedemptionRecord> list, String subtitle, String emptyMessage) {
+    private void bubbleSortRedemptionsByPointsDescending(ListInterface<RedemptionRecord> list) {
+        int n = list.getNumberOfEntries();
+        for (int i = 1; i <= n - 1; i++) {
+            for (int j = 1; j <= n - i; j++) {
+                if (list.getEntry(j).getPointsUsed() < list.getEntry(j + 1).getPointsUsed()) {
+                    list.swap(j, j + 1);
+                }
+            }
+        }
+    }
+
+    private void insertionSortRedemptionsByMemberName(ListInterface<RedemptionRecord> list) {
+        int n = list.getNumberOfEntries();
+        for (int i = 2; i <= n; i++) {
+            int j = i;
+            while (j > 1 && list.getEntry(j).getMemberName()
+                    .compareToIgnoreCase(list.getEntry(j - 1).getMemberName()) < 0) {
+                list.swap(j, j - 1);
+                j--;
+            }
+        }
+    }
+
+    private void insertionSortRedemptionsByRewardName(ListInterface<RedemptionRecord> list) {
+        int n = list.getNumberOfEntries();
+        for (int i = 2; i <= n; i++) {
+            int j = i;
+            while (j > 1 && list.getEntry(j).getRewardName()
+                    .compareToIgnoreCase(list.getEntry(j - 1).getRewardName()) < 0) {
+                list.swap(j, j - 1);
+                j--;
+            }
+        }
+    }
+
+    // Merged, searchable & sortable redemption report (replaces the old
+    // separate "by member" / "full history" reports). Search matches Member
+    // ID, member name, or reward name. Table + bar chart, same as the
+    // Loyalty Report. The chart aggregates points spent PER REWARD (rather
+    // than one bar per row) so it stays readable regardless of how many
+    // redemption events are shown.
+    public String generateRedemptionReport(String searchKeyword, int sortOption) {
+        ListInterface<RedemptionRecord> filtered = filterRedemptions(searchKeyword);
+
+        switch (sortOption) {
+            case REDEMPTION_SORT_BY_POINTS:
+                bubbleSortRedemptionsByPointsDescending(filtered);
+                break;
+            case REDEMPTION_SORT_BY_MEMBER_NAME:
+                insertionSortRedemptionsByMemberName(filtered);
+                break;
+            case REDEMPTION_SORT_BY_REWARD_NAME:
+                insertionSortRedemptionsByRewardName(filtered);
+                break;
+            default:
+                insertionSortRedemptionsByDateDescending(filtered);
+                break;
+        }
+
+        String filterLabel = (searchKeyword == null || searchKeyword.trim().isEmpty())
+                ? "All Redemptions" : "\"" + searchKeyword.trim() + "\"";
         DateTimeFormatter dateFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd");
 
         StringBuilder sb = new StringBuilder();
-        sb.append(ReportFormatUtility.buildHeader(subtitle, VirtualClock.getInstance().now()));
+        sb.append(ReportFormatUtility.buildHeader("REWARD REDEMPTION HISTORY REPORT", VirtualClock.getInstance().now()));
+        sb.append("Search: ").append(filterLabel).append("   |   Sort: ").append(redemptionSortOptionLabel(sortOption)).append("\n");
+        sb.append(ReportFormatUtility.separatorLine());
         sb.append(String.format("%-10s %-18s %-30s %-8s %-12s%n",
                 "MemberID", "Member Name", "Reward Redeemed", "Points", "Date"));
         sb.append(ReportFormatUtility.separatorLine());
 
-        int total = list.getNumberOfEntries();
+        int total = filtered.getNumberOfEntries();
+        ListInterface<String> rewardNames = new DoublyLinkedList<>();
+        ListInterface<Integer> rewardTotals = new DoublyLinkedList<>();
+
         for (int i = 1; i <= total; i++) {
-            RedemptionRecord r = list.getEntry(i);
+            RedemptionRecord r = filtered.getEntry(i);
             sb.append(String.format("%-10d %-18s %-30s %-8d %-12s%n",
                     r.getMemberID(), r.getMemberName(), r.getRewardName(),
                     r.getPointsUsed(), r.getRedeemedDate().format(dateFormatter)));
+
+            int idx = rewardNames.indexOf(r.getRewardName());
+            if (idx == -1) {
+                rewardNames.add(r.getRewardName());
+                rewardTotals.add(r.getPointsUsed());
+            } else {
+                rewardTotals.replace(idx, rewardTotals.getEntry(idx) + r.getPointsUsed());
+            }
         }
 
-        sb.append(ReportFormatUtility.buildFooter("Total redemptions", total, emptyMessage));
+        sb.append(ReportFormatUtility.separatorLine());
+        if (total > 0) {
+            int chartCount = rewardNames.getNumberOfEntries();
+            String[] chartLabels = new String[chartCount];
+            int[] chartValues = new int[chartCount];
+            for (int i = 1; i <= chartCount; i++) {
+                chartLabels[i - 1] = rewardNames.getEntry(i);
+                chartValues[i - 1] = rewardTotals.getEntry(i);
+            }
+            sb.append(ReportFormatUtility.buildBarChart("POINTS REDEEMED BY REWARD", chartLabels, chartValues, "points"));
+        }
+
+        sb.append(ReportFormatUtility.buildFooter("Total redemptions displayed", total, "No redemptions match this search."));
         return sb.toString();
     }
 

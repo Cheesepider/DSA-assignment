@@ -52,7 +52,7 @@ public class LoyaltyUI {
         if (expiringCount > 0) {
             System.out.println("\n\u26A0 ALERT: " + expiringCount +
                     " points transaction(s) are expiring within " +
-                    LoyaltyControl.DEFAULT_EXPIRY_ALERT_DAYS + " days! See option 8 for details.");
+                    LoyaltyControl.DEFAULT_EXPIRY_ALERT_DAYS + " days! See option 7 for details.");
         }
 
         int pendingCount = loyaltyControl.getPendingPointsQueueCount();
@@ -75,11 +75,10 @@ public class LoyaltyUI {
             System.out.println("3. View Reward Catalog");
             System.out.println("4. Manage Reward Catalog (Add / Update / Delete)");
             System.out.println("5. Points Accumulation Queue (View / Process / Reject / Grant Promo)");
-            System.out.println("6. Generate Loyalty Report (Ranked by Points)");
-            System.out.println("7. Generate Tier Distribution Report");
-            System.out.println("8. View Points Transactions (Alerts / Full History)");
-            System.out.println("9. View Redemption History (By Member / Full History)");
-            System.out.println("10. Exit Loyalty Module");
+            System.out.println("6. Generate Loyalty Report (Ranked by Points, Search & Sort)");
+            System.out.println("7. View Points Transactions (Alerts / Full History)");
+            System.out.println("8. View Redemption History (Search & Sort, Table & Chart)");
+            System.out.println("9. Exit Loyalty Module");
             System.out.println("===============================================");
             System.out.println("0. Advance Time");
             System.out.println("===============================================");
@@ -104,18 +103,15 @@ public class LoyaltyUI {
                     pointsAccumulationQueueUI();
                     break;
                 case 6:
-                    System.out.println(loyaltyControl.generateLoyaltyReport());
+                    generateLoyaltyReportUI();
                     break;
                 case 7:
-                    System.out.println(loyaltyControl.generateTierDistributionReport());
-                    break;
-                case 8:
                     viewTransactionsUI();
                     break;
-                case 9:
+                case 8:
                     viewRedemptionsUI();
                     break;
-                case 10:
+                case 9:
                     System.out.println("Exiting Loyalty & Reward Module...");
                     break;
                 case 0:
@@ -128,7 +124,7 @@ public class LoyaltyUI {
                 default:
                     System.out.println("Invalid option. Please try again.");
             }
-        } while (choice != 10);
+        } while (choice != 9);
     }
 
     // scans for and forfeits any overdue points, printing a banner if
@@ -247,6 +243,24 @@ public class LoyaltyUI {
         System.out.println(loyaltyControl.grantPromotionalPoints(memberID, points, reason));
     }
 
+    // =========================================================
+    // Generate Loyalty Report (merges the old "Ranked by Points" report
+    // and the old "Tier Distribution" report into one searchable,
+    // sortable report with a table + bar charts - see
+    // LoyaltyControl.generateLoyaltyReport(String, int))
+    // =========================================================
+    private void generateLoyaltyReportUI() {
+        System.out.println("\n--- Generate Loyalty Report (Ranked by Points) ---");
+        System.out.print("Search by Member ID / Name / Tier (leave blank for all members): ");
+        String keyword = scanner.nextLine();
+
+        System.out.println("Sort by: 1. Points (High-Low)   2. Name (A-Z)   3. Tier (High-Low)   4. Member ID");
+        System.out.print("Please select an option (default 1): ");
+        int sortOption = readSortChoice();
+
+        System.out.println(loyaltyControl.generateLoyaltyReport(keyword, sortOption));
+    }
+
     private void viewTransactionsUI() {
         System.out.println("1. Points Expiry Alerts (Next " + LoyaltyControl.DEFAULT_EXPIRY_ALERT_DAYS + " Days)");
         System.out.println("2. View All Points Transactions (Full History)");
@@ -265,23 +279,32 @@ public class LoyaltyUI {
         }
     }
 
+    // =========================================================
+    // View Redemption History (now a single searchable, sortable report
+    // with a table + bar chart, replacing the old "by member" / "full
+    // history" submenu - see LoyaltyControl.generateRedemptionReport(String, int))
+    // =========================================================
     private void viewRedemptionsUI() {
-        System.out.println("1. View One Member's Redemption History");
-        System.out.println("2. View All Redemptions (Full History)");
-        System.out.print("Please select an option: ");
-        int option = ValidationUtility.inputChoice(scanner);
+        System.out.println("\n--- View Redemption History ---");
+        System.out.print("Search by Member ID / Member Name / Reward Name (leave blank for all): ");
+        String keyword = scanner.nextLine();
 
-        switch (option) {
-            case 1:
-                System.out.print("Enter Member ID: ");
-                int memberID = ValidationUtility.inputChoice(scanner);
-                System.out.println(loyaltyControl.generateMemberRedemptionReport(memberID));
-                break;
-            case 2:
-                System.out.println(loyaltyControl.generateAllRedemptionsReport());
-                break;
-            default:
-                System.out.println("Invalid option.");
+        System.out.println("Sort by: 1. Date (Newest First)   2. Points Used (High-Low)   " +
+                "3. Member Name (A-Z)   4. Reward Name (A-Z)");
+        System.out.print("Please select an option (default 1): ");
+        int sortOption = readSortChoice();
+
+        System.out.println(loyaltyControl.generateRedemptionReport(keyword, sortOption));
+    }
+
+    // shared helper: reads a sort-option number, defaulting to 1 (blank /
+    // non-numeric input) rather than rejecting the report request outright
+    private int readSortChoice() {
+        String input = scanner.nextLine();
+        try {
+            return Integer.parseInt(input.trim());
+        } catch (NumberFormatException e) {
+            return 1;
         }
     }
 
