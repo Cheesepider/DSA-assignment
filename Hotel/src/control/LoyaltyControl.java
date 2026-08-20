@@ -8,11 +8,13 @@ import dao.LoyaltyDAO;
 import dao.RegistrationDAO;
 import adt.DoublyLinkedList;
 import adt.ListInterface;
+import entity.Booking;
 import entity.Member;
 import entity.Member.LoyaltyTier;
 import entity.PointsTransaction;
 import entity.RedemptionRecord;
 import entity.RewardItem;
+import entity.Room;
 import main.App;
 import utility.ReportFormatUtility;
 import utility.VirtualClock;
@@ -57,7 +59,14 @@ public class LoyaltyControl {
     // without needing a separate sort step.
     private static ListInterface<RedemptionRecord> redemptionHistory;
 
-    private LoyaltyDAO loyaltyDAO = new LoyaltyDAO();
+    // bookingIDs that have already been credited with loyalty points, so
+    // processCompletedStayPoints() (which re-scans App.bookingHistoryList
+    // every time the module opens) never double-awards points for the same
+    // completed stay. Just our own ADT storing plain Integer values - not
+    // a second collection ADT type, same as storing any other object.
+    private static ListInterface<Integer> processedBookingIDs;
+
+    private static LoyaltyDAO loyaltyDAO = new LoyaltyDAO();
 
     // Points thresholds that trigger an automatic tier change
     private static final int PLATINUM_THRESHOLD = 1000;
@@ -68,6 +77,11 @@ public class LoyaltyControl {
     private static final int POINTS_VALIDITY_MONTHS = 12;
     // default look-ahead window (in days) for the expiry alert
     public static final int DEFAULT_EXPIRY_ALERT_DAYS = 30;
+    // conversion rate for earning points: every $10 actually spent on a
+    // completed, paid stay earns 1 loyalty point (see earnPointsForStay()).
+    // This is the ONLY way points are earned - there is deliberately no
+    // manual/arbitrary "add points" path left in this module anymore.
+    private static final double DOLLARS_PER_POINT = 1.0;
 
     // standalone mode: uses RegistrationDAO's member data (App.memberList)
     // so that this module can still be run/tested independently, without
@@ -80,7 +94,7 @@ public class LoyaltyControl {
             RegistrationDAO.initializeMemberData();
         }
         memberList = App.memberList;
-        initializeSharedDataIfNeeded();
+        ensureSharedDataInitialized();
     }
 
     // integrated mode: uses the application-wide shared memberList
@@ -88,7 +102,7 @@ public class LoyaltyControl {
     // module, and members registered elsewhere are visible here too
     public LoyaltyControl(ListInterface<Member> sharedMemberList) {
         memberList = sharedMemberList;
-        initializeSharedDataIfNeeded();
+        ensureSharedDataInitialized();
     }
 
     // reward catalog and transaction history are only seeded once per
@@ -96,33 +110,70 @@ public class LoyaltyControl {
     // every time a new LoyaltyControl is constructed - so data added or
     // changed during one visit to the module is still there the next time
     // the module is opened, without needing any changes to App.java
-    private void initializeSharedDataIfNeeded() {
+    //
+    // static (not per-instance) because processCompletedStayPoints() runs
+    // as an independent scan of shared App state (not a call triggered by
+    // another module), so this needs to work with no LoyaltyControl
+    // instance necessarily existing yet. Uses App.memberList directly
+    // (rather than the instance's memberList field) for the same reason.
+    private static void ensureSharedDataInitialized() {
         if (rewardCatalog == null) {
             rewardCatalog = loyaltyDAO.initializeRewardCatalog();
         }
         if (transactionList == null) {
-            transactionList = loyaltyDAO.initializeTransactionData(memberList, POINTS_VALIDITY_MONTHS);
+            transactionList = loyaltyDAO.initializeTransactionData(App.memberList, POINTS_VALIDITY_MONTHS);
         }
         if (redemptionHistory == null) {
             redemptionHistory = new DoublyLinkedList<>();
         }
+        if (processedBookingIDs == null) {
+            processedBookingIDs = new DoublyLinkedList<>();
+        }
     }
 
     // =========================================================
-    // Use Case 1: Earn Loyalty Points
+    // Use Case 1: Earn Loyalty Points (from a completed, paid stay ONLY)
     // =========================================================
-    public String earnPoints(int memberID, int pointsEarned) {
-        if (pointsEarned <= 0) {
-            return "Points earned must be a positive value.";
-        }
-        Member member = findMemberByID(memberID);
-        if (member == null) {
-            return "Member with ID " + memberID + " not found.";
+
+    /**
+     * Awards loyalty points for a COMPLETED, PAID stay - this is the only
+     * way points can be earned. There used to be a manual "Earn Loyalty
+     * Points" menu option where staff typed in an arbitrary point amount
+     * for any member at any time, with no justification tied to it; that
+     * has been removed entirely. Points are now always a direct, auditable
+     * function of money actually spent at the hotel, so every
+     * PointsTransaction can be explained by a real stay.
+     *
+     * Called by processCompletedStayPoints() once it finds a checked-out
+     * stay's final bill - completing and paying for a stay IS the reason
+     * for the points, not a free-form UI entry.
+     *
+     * static because this module discovers completed stays on its own (via
+     * a scan of the shared App state, not a call from the Registration
+     * module - see processCompletedStayPoints()), so there is no
+     * LoyaltyControl instance necessarily available at the point this runs.
+     * This mirrors rewardCatalog/transactionList already being shared
+     * static state rather than per-instance state.
+     *
+     * @param member      the member who completed the stay
+     * @param amountSpent the final bill amount for the stay, in dollars
+     * @return a summary message, or an empty string if member is null or
+     *         the spend didn't qualify for any points
+     */
+    public static String earnPointsForStay(Member member, double amountSpent) {
+        ensureSharedDataInitialized();
+        if (member == null || amountSpent <= 0) {
+            return "";
         }
 
-        // member is the same object reference stored inside memberList (the
-        // ADT stores references, not copies), so mutating it here already
-        // updates the shared list directly - no replace() call is needed
+        int pointsEarned = (int) (amountSpent / DOLLARS_PER_POINT);
+        if (pointsEarned <= 0) {
+            return "";
+        }
+
+        // member is the same object reference stored inside App.memberList
+        // (the ADT stores references, not copies), so mutating it here
+        // already updates the shared list directly - no replace() call needed
         member.setLoyaltyPoints(member.getLoyaltyPoints() + pointsEarned);
         String tierMessage = updateTier(member);
 
@@ -135,7 +186,7 @@ public class LoyaltyControl {
         // Earning more points adds onto that existing record and resets its
         // expiry to count down from today again; a member with no record
         // yet gets a new one.
-        PointsTransaction existing = findTransactionByMemberID(memberID);
+        PointsTransaction existing = findTransactionByMemberID(member.getMemberID());
         if (existing != null) {
             existing.setPointsEarned(existing.getPointsEarned() + pointsEarned);
             existing.setEarnedDate(earnedDate);
@@ -147,7 +198,8 @@ public class LoyaltyControl {
 
         StringBuilder sb = new StringBuilder();
         sb.append(member.getMemberName()).append(" earned ").append(pointsEarned)
-          .append(" points. New balance: ").append(member.getLoyaltyPoints()).append(" points.");
+          .append(" loyalty point(s) from this stay ($").append(String.format("%.2f", amountSpent))
+          .append(" spent). New balance: ").append(member.getLoyaltyPoints()).append(" points.");
         if (!tierMessage.isEmpty()) {
             sb.append("\n").append(tierMessage);
         }
@@ -156,7 +208,7 @@ public class LoyaltyControl {
 
     // Returns the given member's single consolidated points-transaction
     // record, or null if the member has never earned any points yet.
-    private PointsTransaction findTransactionByMemberID(int memberID) {
+    private static PointsTransaction findTransactionByMemberID(int memberID) {
         for (int i = 1; i <= transactionList.getNumberOfEntries(); i++) {
             PointsTransaction t = transactionList.getEntry(i);
             if (t.getMemberID() == memberID) {
@@ -164,6 +216,89 @@ public class LoyaltyControl {
             }
         }
         return null;
+    }
+
+    /**
+     * Scans App.bookingHistoryList for stays that have finished CHECKED_OUT
+     * but haven't been credited with loyalty points yet, and awards points
+     * for each one via earnPointsForStay().
+     *
+     * This exists because the Registration module (owned by a teammate) is
+     * NOT modified to call into this module directly - instead, this module
+     * independently discovers completed stays from the shared App state and
+     * credits them itself. processedBookingIDs prevents the same booking
+     * from being credited twice across repeated calls (e.g. every time the
+     * Loyalty module is reopened, this re-scans the whole history list).
+     *
+     * @return a summary line per member credited, or an empty string if
+     *         there was nothing new to process
+     */
+    public static String processCompletedStayPoints() {
+        ensureSharedDataInitialized();
+        StringBuilder sb = new StringBuilder();
+
+        for (int i = 1; i <= App.bookingHistoryList.getNumberOfEntries(); i++) {
+            Booking b = App.bookingHistoryList.getEntry(i);
+            if (b.getBookingStatus() != Booking.BookingStatus.CHECKED_OUT) {
+                continue; // only completed, paid stays earn points - not cancellations
+            }
+            if (processedBookingIDs.contains(b.getBookingID())) {
+                continue; // already credited on a previous scan
+            }
+
+            double amountSpent = calculateStayBill(b);
+            String message = earnPointsForStay(b.getMember(), amountSpent);
+            if (!message.isEmpty()) {
+                sb.append(message).append("\n");
+            }
+            processedBookingIDs.add(b.getBookingID());
+        }
+
+        return sb.toString();
+    }
+
+    /**
+     * Recomputes the same final bill the Registration module would have
+     * shown at checkout time - base nights at the room's rate, plus a 1.5x
+     * penalty rate for any overstay days - purely so this module can work
+     * out how many loyalty points a completed stay is worth.
+     *
+     * This duplicates RegistrationControl's billing formula rather than
+     * calling into it, because this module cannot depend on or modify
+     * teammate-owned control classes outside the Loyalty & Reward module.
+     * booking.getBookingDate() is used as the ACTUAL checkout date because
+     * RegistrationControl.processCheckout() overwrites bookingDate with the
+     * real checkout date when it finalizes a stay (checkInDate/checkOutDate
+     * stay as the originally SCHEDULED dates).
+     */
+    private static double calculateStayBill(Booking b) {
+        Room room = b.getRoom();
+        if (room == null) {
+            return 0;
+        }
+        double rate = room.getRoomType().getBaseRate();
+
+        LocalDate checkIn = b.getCheckInDate();
+        LocalDate scheduledCheckOut = b.getCheckOutDate();
+        LocalDate actualCheckOut = b.getBookingDate();
+
+        long scheduledNights = ChronoUnit.DAYS.between(checkIn, scheduledCheckOut);
+        if (scheduledNights <= 0) {
+            scheduledNights = 1;
+        }
+
+        long overstayDays = ChronoUnit.DAYS.between(scheduledCheckOut, actualCheckOut);
+        if (overstayDays > 0) {
+            double normalCharge = scheduledNights * rate;
+            double penaltyCharge = overstayDays * rate * 1.5;
+            return normalCharge + penaltyCharge;
+        } else {
+            long actualNights = ChronoUnit.DAYS.between(checkIn, actualCheckOut);
+            if (actualNights <= 0) {
+                actualNights = 1;
+            }
+            return actualNights * rate;
+        }
     }
 
     // =========================================================
@@ -218,7 +353,7 @@ public class LoyaltyControl {
     // =========================================================
     // Use Case 3: Automatic Tier Upgrade / Downgrade
     // =========================================================
-    private String updateTier(Member member) {
+    private static String updateTier(Member member) {
         LoyaltyTier oldTier = member.getLoyaltyTier();
         LoyaltyTier newTier;
         int points = member.getLoyaltyPoints();
@@ -603,7 +738,7 @@ public class LoyaltyControl {
         // existingReward is the same object reference stored inside
         // rewardCatalog, so mutating its fields here already updates the
         // catalog directly - no replace() call is needed (same reasoning
-        // as earnPoints()/redeemReward() mutating Member directly)
+        // as earnPointsForStay()/redeemReward() mutating Member directly)
         RewardItem existingReward = rewardCatalog.getEntry(position);
         existingReward.setRewardName(newName);
         existingReward.setPointsRequired(newPointsRequired);

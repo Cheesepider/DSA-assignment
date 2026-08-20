@@ -31,27 +31,39 @@ public class LoyaltyUI {
     public void displayMenu() {
         int choice;
 
+        // scan for stays that finished checkout since this module was last
+        // opened, and credit their loyalty points now - see
+        // LoyaltyControl.processCompletedStayPoints() for why this is a
+        // scan instead of a direct call from the Registration module
+        String newlyEarnedSummary = LoyaltyControl.processCompletedStayPoints();
+        if (!newlyEarnedSummary.isEmpty()) {
+            System.out.println("\n--- LOYALTY PROGRAM: POINTS CREDITED FOR COMPLETED STAYS ---");
+            System.out.print(newlyEarnedSummary);
+        }
+
         // one-time notification banner shown when the module is opened
         int expiringCount = loyaltyControl.getExpiringTransactionCount(LoyaltyControl.DEFAULT_EXPIRY_ALERT_DAYS);
         if (expiringCount > 0) {
             System.out.println("\n\u26A0 ALERT: " + expiringCount +
                     " points transaction(s) are expiring within " +
-                    LoyaltyControl.DEFAULT_EXPIRY_ALERT_DAYS + " days! See option 8 for details.");
+                    LoyaltyControl.DEFAULT_EXPIRY_ALERT_DAYS + " days! See option 7 for details.");
         }
 
         do {
             System.out.println("\n===============================================");
             System.out.println("      LOYALTY & REWARD SERVICE MODULE");
             System.out.println("===============================================");
-            System.out.println("1. Earn Loyalty Points");
-            System.out.println("2. Redeem Reward");
-            System.out.println("3. Search Member");
-            System.out.println("4. View Reward Catalog");
-            System.out.println("5. Manage Reward Catalog (Add / Update / Delete)");
-            System.out.println("6. Generate Loyalty Report (Ranked by Points)");
-            System.out.println("7. Generate Tier Distribution Report");
-            System.out.println("8. View Points Transactions (Alerts / Full History)");
-            System.out.println("9. View Redemption History (By Member / Full History)");
+            System.out.println("(Points are credited automatically for completed,");
+            System.out.println(" paid stays whenever this module is opened)");
+            System.out.println("-----------------------------------------------");
+            System.out.println("1. Redeem Reward");
+            System.out.println("2. Search Member");
+            System.out.println("3. View Reward Catalog");
+            System.out.println("4. Manage Reward Catalog (Add / Update / Delete)");
+            System.out.println("5. Generate Loyalty Report (Ranked by Points)");
+            System.out.println("6. Generate Tier Distribution Report");
+            System.out.println("7. View Points Transactions (Alerts / Full History)");
+            System.out.println("8. View Redemption History (By Member / Full History)");
             System.out.println("0. Exit Loyalty Module");
             System.out.println("===============================================");
             System.out.print("Please select an option: ");
@@ -60,30 +72,27 @@ public class LoyaltyUI {
 
             switch (choice) {
                 case 1:
-                    earnPointsUI();
-                    break;
-                case 2:
                     redeemRewardUI();
                     break;
-                case 3:
+                case 2:
                     searchMemberUI();
                     break;
-                case 4:
+                case 3:
                     System.out.println(loyaltyControl.displayRewardCatalog());
                     break;
-                case 5:
+                case 4:
                     manageRewardCatalogUI();
                     break;
-                case 6:
+                case 5:
                     System.out.println(loyaltyControl.generateLoyaltyReport());
                     break;
-                case 7:
+                case 6:
                     System.out.println(loyaltyControl.generateTierDistributionReport());
                     break;
-                case 8:
+                case 7:
                     viewTransactionsUI();
                     break;
-                case 9:
+                case 8:
                     viewRedemptionsUI();
                     break;
                 case 0:
@@ -93,14 +102,6 @@ public class LoyaltyUI {
                     System.out.println("Invalid option. Please try again.");
             }
         } while (choice != 0);
-    }
-
-    private void earnPointsUI() {
-        System.out.print("Enter Member ID: ");
-        int memberID = ValidationUtility.inputChoice(scanner);
-        System.out.print("Enter points earned this stay: ");
-        int points = ValidationUtility.inputChoice(scanner);
-        System.out.println(loyaltyControl.earnPoints(memberID, points));
     }
 
     private void redeemRewardUI() {
