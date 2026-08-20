@@ -19,7 +19,6 @@ public class LoyaltyUI {
     private Scanner scanner = new Scanner(System.in);
 
     public LoyaltyUI() {
-        // standalone mode: uses this module's own hardcoded member data
         loyaltyControl = new LoyaltyControl();
     }
 

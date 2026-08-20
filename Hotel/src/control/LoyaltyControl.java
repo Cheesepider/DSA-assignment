@@ -81,7 +81,7 @@ public class LoyaltyControl {
     // completed, paid stay earns 1 loyalty point (see earnPointsForStay()).
     // This is the ONLY way points are earned - there is deliberately no
     // manual/arbitrary "add points" path left in this module anymore.
-    private static final double DOLLARS_PER_POINT = 1.0;
+    private static final double DOLLARS_PER_POINT = 10.0;
 
     // standalone mode: uses RegistrationDAO's member data (App.memberList)
     // so that this module can still be run/tested independently, without
