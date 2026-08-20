@@ -94,6 +94,56 @@ public class LoyaltyControl {
     // since been processed or rejected.
     private static ListInterface<Integer> queuedStayBookingIDs;
 
+    // -----------------------------------------------------------
+    // Lifetime earned-points tracking, used to judge tier (see
+    // updateTier()). Member.loyaltyPoints is only the CURRENT spendable
+    // balance - it goes down on redemption/expiry, so it cannot also be
+    // used to judge tier without a member's standing fluctuating every
+    // time they spend or forget to redeem points.
+    //
+    // Member is a SHARED entity class owned by another module/teammate,
+    // so it is not modified for this. Instead, this module keeps its own
+    // memberID -> lifetime-earned lookup entirely inside LoyaltyControl,
+    // using the team's own ListInterface/DoublyLinkedList - the same ADT
+    // used everywhere else in this module (pendingPointsQueue,
+    // rewardCatalog, etc.) - so no new collection type or shared-entity
+    // change is introduced.
+    // -----------------------------------------------------------
+    private static class LifetimeEarnedPoints {
+        private int memberID;
+        private int totalEarned;
+
+        // no-arg constructor only ever used to build a "probe" object for
+        // ListInterface.indexOf() lookups (same pattern as RewardItem's
+        // and PendingPointsCredit's no-arg constructors), never to record
+        // a real entry
+        LifetimeEarnedPoints() {
+        }
+
+        LifetimeEarnedPoints(int memberID, int totalEarned) {
+            this.memberID = memberID;
+            this.totalEarned = totalEarned;
+        }
+
+        @Override
+        public boolean equals(Object obj) {
+            if (this == obj) {
+                return true;
+            }
+            if (!(obj instanceof LifetimeEarnedPoints)) {
+                return false;
+            }
+            return this.memberID == ((LifetimeEarnedPoints) obj).memberID;
+        }
+
+        @Override
+        public int hashCode() {
+            return Integer.hashCode(memberID);
+        }
+    }
+
+    private static ListInterface<LifetimeEarnedPoints> lifetimeEarnedList;
+
     private static LoyaltyDAO loyaltyDAO = new LoyaltyDAO();
 
     // Points thresholds that trigger an automatic tier change
@@ -151,6 +201,53 @@ public class LoyaltyControl {
         }
         if (queuedStayBookingIDs == null) {
             queuedStayBookingIDs = new DoublyLinkedList<>();
+        }
+        if (lifetimeEarnedList == null) {
+            lifetimeEarnedList = new DoublyLinkedList<>();
+            // seed lifetime-earned from each member's existing hardcoded
+            // loyaltyPoints, so tier stays consistent with the seed data
+            // from the very start (same reasoning as
+            // LoyaltyDAO.initializeTransactionData())
+            for (int i = 1; i <= App.memberList.getNumberOfEntries(); i++) {
+                Member m = App.memberList.getEntry(i);
+                if (m.getLoyaltyPoints() > 0) {
+                    lifetimeEarnedList.add(new LifetimeEarnedPoints(m.getMemberID(), m.getLoyaltyPoints()));
+                }
+            }
+        }
+    }
+
+    // ---- lifetime-earned lookup / update helpers ----
+
+    // catalog is small - linear search via indexOf() is sufficient (same
+    // "probe object" pattern as findRewardPosition()/rejectPendingPointsCredit())
+    private static int findLifetimeEarnedPosition(int memberID) {
+        LifetimeEarnedPoints probe = new LifetimeEarnedPoints();
+        probe.memberID = memberID;
+        return lifetimeEarnedList.indexOf(probe);
+    }
+
+    private static int getLifetimeEarned(int memberID) {
+        int position = findLifetimeEarnedPosition(memberID);
+        return position == -1 ? 0 : lifetimeEarnedList.getEntry(position).totalEarned;
+    }
+
+    // public read-only accessor so the boundary layer (LoyaltyUI) can
+    // display a member's lifetime-earned figure - e.g. alongside their
+    // current spendable balance in Search Member, or as a report column -
+    // without exposing the internal LifetimeEarnedPoints type itself
+    public int getLifetimeEarnedPoints(int memberID) {
+        return getLifetimeEarned(memberID);
+    }
+
+    // only ever called from creditPointsToMember() - lifetime-earned only
+    // ever grows, never shrinks (redemption/expiry deliberately never call this)
+    private static void addLifetimeEarned(int memberID, int pointsToAdd) {
+        int position = findLifetimeEarnedPosition(memberID);
+        if (position == -1) {
+            lifetimeEarnedList.add(new LifetimeEarnedPoints(memberID, pointsToAdd));
+        } else {
+            lifetimeEarnedList.getEntry(position).totalEarned += pointsToAdd;
         }
     }
 
@@ -395,6 +492,11 @@ public class LoyaltyControl {
         // (the ADT stores references, not copies), so mutating it here
         // already updates the shared list directly - no replace() call needed
         member.setLoyaltyPoints(member.getLoyaltyPoints() + pointsToCredit);
+        // lifetime-earned (this module's own tracking - see
+        // LifetimeEarnedPoints above) only ever grows here, and is
+        // deliberately left untouched by redemption/expiry below, so tier
+        // reflects earning history rather than current spendable balance.
+        addLifetimeEarned(member.getMemberID(), pointsToCredit);
         String tierMessage = updateTier(member);
 
         LocalDate earnedDate = VirtualClock.getInstance().today();
@@ -456,8 +558,11 @@ public class LoyaltyControl {
                     ", has " + member.getLoyaltyPoints() + ").";
         }
 
+        // only the spendable balance is reduced here - totalPointsEarned
+        // (and therefore tier) is left untouched, since redemption is a
+        // normal, expected use of earned points and should never cost a
+        // member their tier standing
         member.setLoyaltyPoints(member.getLoyaltyPoints() - reward.getPointsRequired());
-        String tierMessage = updateTier(member);
 
         // Redeeming only lowers the points on the member's consolidated
         // transaction record - the expiry date stays exactly as it was.
@@ -477,30 +582,29 @@ public class LoyaltyControl {
                 VirtualClock.getInstance().today());
         redemptionHistory.add(1, record);
 
-        StringBuilder sb = new StringBuilder();
-        sb.append(member.getMemberName()).append(" redeemed \"").append(reward.getRewardName())
-          .append("\" for ").append(reward.getPointsRequired()).append(" points. Remaining balance: ")
-          .append(member.getLoyaltyPoints()).append(" points.");
-        if (!tierMessage.isEmpty()) {
-            sb.append("\n").append(tierMessage);
-        }
-        return sb.toString();
+        return member.getMemberName() + " redeemed \"" + reward.getRewardName() +
+                "\" for " + reward.getPointsRequired() + " points. Remaining balance: " +
+                member.getLoyaltyPoints() + " points. (Tier is unaffected by redemption.)";
     }
 
     // =========================================================
     // Use Case 3: Automatic Tier Progression (upgrade / downgrade)
     // =========================================================
-    // Tier is always a pure function of the CURRENT points balance, so it
-    // is re-evaluated at every point where that balance changes -
-    // crediting (creditPointsToMember) and redeeming (redeemReward). There
-    // is deliberately no separate manual "process tier upgrade" step: a
-    // member's tier should never be able to drift out of sync with their
-    // points, so it is recalculated automatically the instant the balance
-    // that determines it changes.
+    // Tier is a pure function of the member's LIFETIME EARNED points,
+    // tracked by this module's own lifetimeEarnedList (see
+    // LifetimeEarnedPoints above) - NOT their current spendable balance
+    // (member.loyaltyPoints). This is a deliberate design decision: tier
+    // represents a member's earning achievement over time, so it should
+    // not fluctuate just because they redeemed a reward or let some points
+    // lapse unused (see expireOverduePoints()). It is re-evaluated at
+    // every point where lifetime-earned changes - currently that is only
+    // creditPointsToMember() (redeeming and expiry deliberately do NOT
+    // touch lifetime-earned, so they call this too, but it is a no-op
+    // since the underlying figure did not change).
     private static String updateTier(Member member) {
         LoyaltyTier oldTier = member.getLoyaltyTier();
         LoyaltyTier newTier;
-        int points = member.getLoyaltyPoints();
+        int points = getLifetimeEarned(member.getMemberID());
 
         if (points >= ELITE_THRESHOLD) {
             newTier = LoyaltyTier.Elite;
@@ -647,7 +751,8 @@ public class LoyaltyControl {
 
         StringBuilder sb = new StringBuilder();
         sb.append(ReportFormatUtility.buildHeader("MEMBER RANKING REPORT (BY POINTS)", VirtualClock.getInstance().now()));
-        sb.append(String.format("%-5s %-10s %-20s %-12s %-10s%n", "Rank", "Member ID", "Member Name", "Tier", "Points"));
+        sb.append(String.format("%-5s %-10s %-20s %-12s %-10s %-15s%n",
+                "Rank", "Member ID", "Member Name", "Tier", "Points", "Lifetime Earned"));
         sb.append(ReportFormatUtility.separatorLine());
 
         int total = sortedList.getNumberOfEntries();
@@ -655,13 +760,16 @@ public class LoyaltyControl {
         int[] points = new int[total];
         for (int i = 1; i <= total; i++) {
             Member m = sortedList.getEntry(i);
-            sb.append(String.format("%-5d %-10d %-20s %-12s %-10d%n",
-                    i, m.getMemberID(), m.getMemberName(), m.getLoyaltyTier(), m.getLoyaltyPoints()));
+            sb.append(String.format("%-5d %-10d %-20s %-12s %-10d %-15d%n",
+                    i, m.getMemberID(), m.getMemberName(), m.getLoyaltyTier(), m.getLoyaltyPoints(),
+                    getLifetimeEarned(m.getMemberID())));
             labels[i - 1] = m.getMemberName();
             points[i - 1] = m.getLoyaltyPoints();
         }
 
         sb.append(ReportFormatUtility.separatorLine());
+        sb.append("Note: Points = current spendable balance. Lifetime Earned = total ever earned")
+          .append(" (used to determine Tier; unaffected by redemption or expiry).\n");
         sb.append(ReportFormatUtility.buildBarChart("POINTS DISTRIBUTION", labels, points, "points"));
         sb.append(ReportFormatUtility.buildFooter("Total members displayed", total));
         return sb.toString();
@@ -719,11 +827,13 @@ public class LoyaltyControl {
     // (see the "Advance Time" menu option, mirroring the same feature in
     // the Booking/Registration modules), this scans transactionList for
     // any record whose expiryDate has already passed and forfeits those
-    // points: they are deducted from the member's balance, the member's
-    // tier is re-evaluated (losing points can demote a member below a
-    // tier threshold), and the now-fully-expired transaction record is
-    // removed from transactionList - there is nothing left on it worth
-    // tracking or alerting on.
+    // points: they are deducted from the member's SPENDABLE balance
+    // (loyaltyPoints) only, and the now-fully-expired transaction record
+    // is removed from transactionList. member.totalPointsEarned - and
+    // therefore the member's tier - is deliberately left untouched: tier
+    // reflects lifetime earning achievement, and forgetting to redeem
+    // points before they lapse should not cost a member their standing
+    // (see updateTier()'s class-level note).
     // =========================================================
     public static String expireOverduePoints() {
         ensureSharedDataInitialized();
@@ -743,15 +853,11 @@ public class LoyaltyControl {
             if (member != null && t.getPointsEarned() > 0) {
                 int forfeited = Math.min(t.getPointsEarned(), member.getLoyaltyPoints());
                 member.setLoyaltyPoints(member.getLoyaltyPoints() - forfeited);
-                String tierMessage = updateTier(member);
 
                 sb.append(member.getMemberName()).append(" (ID ").append(member.getMemberID())
                   .append(") - ").append(forfeited).append(" point(s) EXPIRED on ")
-                  .append(t.getExpiryDate()).append(" and have been forfeited. New balance: ")
-                  .append(member.getLoyaltyPoints()).append(" points.\n");
-                if (!tierMessage.isEmpty()) {
-                    sb.append(tierMessage).append("\n");
-                }
+                  .append(t.getExpiryDate()).append(" and have been forfeited. New spendable balance: ")
+                  .append(member.getLoyaltyPoints()).append(" points. (Tier is unaffected by expiry.)\n");
             }
 
             transactionList.remove(i);

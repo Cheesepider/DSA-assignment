@@ -161,7 +161,13 @@ public class LoyaltyUI {
                 System.out.print("Enter Member ID: ");
                 int id = ValidationUtility.inputChoice(scanner);
                 Member m = loyaltyControl.searchMemberByID(id);
-                System.out.println(m != null ? m : "Member not found.");
+                if (m != null) {
+                    System.out.println(m);
+                    System.out.println("Lifetime Points Earned: " + loyaltyControl.getLifetimeEarnedPoints(id) +
+                            " (this determines Tier; current balance above is what's left to spend)");
+                } else {
+                    System.out.println("Member not found.");
+                }
                 break;
             case 2:
                 System.out.print("Enter name keyword: ");
@@ -320,7 +326,9 @@ public class LoyaltyUI {
             return;
         }
         for (int i = 1; i <= list.getNumberOfEntries(); i++) {
-            System.out.println(list.getEntry(i));
+            Member m = list.getEntry(i);
+            System.out.println(m);
+            System.out.println("   Lifetime Points Earned: " + loyaltyControl.getLifetimeEarnedPoints(m.getMemberID()));
         }
     }
 
