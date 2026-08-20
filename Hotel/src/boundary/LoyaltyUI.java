@@ -31,38 +31,46 @@ public class LoyaltyUI {
         int choice;
 
         // scan for stays that finished checkout since this module was last
-        // opened, and credit their loyalty points now - see
-        // LoyaltyControl.processCompletedStayPoints() for why this is a
-        // scan instead of a direct call from the Registration module
-        String newlyEarnedSummary = LoyaltyControl.processCompletedStayPoints();
-        if (!newlyEarnedSummary.isEmpty()) {
-            System.out.println("\n--- LOYALTY PROGRAM: POINTS CREDITED FOR COMPLETED STAYS ---");
-            System.out.print(newlyEarnedSummary);
+        // opened, and QUEUE their loyalty points for accumulation (they are
+        // NOT credited yet - see LoyaltyControl.queueCompletedStayPoints()
+        // for why points are queued instead of credited automatically).
+        String newlyQueuedSummary = LoyaltyControl.queueCompletedStayPoints();
+        if (!newlyQueuedSummary.isEmpty()) {
+            System.out.println("\n--- LOYALTY PROGRAM: NEW STAYS QUEUED FOR POINTS ACCUMULATION ---");
+            System.out.println(newlyQueuedSummary);
         }
 
-        // one-time notification banner shown when the module is opened
+        // one-time notification banners shown when the module is opened
         int expiringCount = loyaltyControl.getExpiringTransactionCount(LoyaltyControl.DEFAULT_EXPIRY_ALERT_DAYS);
         if (expiringCount > 0) {
             System.out.println("\n\u26A0 ALERT: " + expiringCount +
                     " points transaction(s) are expiring within " +
-                    LoyaltyControl.DEFAULT_EXPIRY_ALERT_DAYS + " days! See option 7 for details.");
+                    LoyaltyControl.DEFAULT_EXPIRY_ALERT_DAYS + " days! See option 8 for details.");
+        }
+
+        int pendingCount = loyaltyControl.getPendingPointsQueueCount();
+        if (pendingCount > 0) {
+            System.out.println("\n\u26A0 ALERT: " + pendingCount +
+                    " points credit(s) are waiting to be processed! See option 5 to review and credit them.");
         }
 
         do {
             System.out.println("\n===============================================");
             System.out.println("      LOYALTY & REWARD SERVICE MODULE");
             System.out.println("===============================================");
-            System.out.println("(Points are credited automatically for completed,");
-            System.out.println(" paid stays whenever this module is opened)");
+            System.out.println("(Completed stays are QUEUED for points accumulation");
+            System.out.println(" whenever this module is opened - use option 5 to");
+            System.out.println(" review and credit them to members)");
             System.out.println("-----------------------------------------------");
             System.out.println("1. Redeem Reward");
             System.out.println("2. Search Member");
             System.out.println("3. View Reward Catalog");
             System.out.println("4. Manage Reward Catalog (Add / Update / Delete)");
-            System.out.println("5. Generate Loyalty Report (Ranked by Points)");
-            System.out.println("6. Generate Tier Distribution Report");
-            System.out.println("7. View Points Transactions (Alerts / Full History)");
-            System.out.println("8. View Redemption History (By Member / Full History)");
+            System.out.println("5. Points Accumulation Queue (View / Process / Reject / Grant Promo)");
+            System.out.println("6. Generate Loyalty Report (Ranked by Points)");
+            System.out.println("7. Generate Tier Distribution Report");
+            System.out.println("8. View Points Transactions (Alerts / Full History)");
+            System.out.println("9. View Redemption History (By Member / Full History)");
             System.out.println("0. Exit Loyalty Module");
             System.out.println("===============================================");
             System.out.print("Please select an option: ");
@@ -83,15 +91,18 @@ public class LoyaltyUI {
                     manageRewardCatalogUI();
                     break;
                 case 5:
-                    System.out.println(loyaltyControl.generateLoyaltyReport());
+                    pointsAccumulationQueueUI();
                     break;
                 case 6:
-                    System.out.println(loyaltyControl.generateTierDistributionReport());
+                    System.out.println(loyaltyControl.generateLoyaltyReport());
                     break;
                 case 7:
-                    viewTransactionsUI();
+                    System.out.println(loyaltyControl.generateTierDistributionReport());
                     break;
                 case 8:
+                    viewTransactionsUI();
+                    break;
+                case 9:
                     viewRedemptionsUI();
                     break;
                 case 0:
@@ -142,6 +153,64 @@ public class LoyaltyUI {
             default:
                 System.out.println("Invalid option.");
         }
+    }
+
+    // =========================================================
+    // Points Accumulation Queue submenu
+    // -----------------------------------------------------------
+    // Everything that adds points to a member - a completed stay OR a
+    // staff-granted personalized promotion - lands in this queue first.
+    // Nothing is credited to a member's balance/tier until staff explicitly
+    // processes (or rejects) it here.
+    // =========================================================
+    private void pointsAccumulationQueueUI() {
+        int option;
+        do {
+            System.out.println("\n--- Points Accumulation Queue ---");
+            System.out.println("1. View Pending Queue");
+            System.out.println("2. Process Next Pending Credit (oldest first)");
+            System.out.println("3. Process ALL Pending Credits");
+            System.out.println("4. Reject a Pending Credit");
+            System.out.println("5. Grant Personalized Promotional Points");
+            System.out.println("0. Back");
+            System.out.print("Please select an option: ");
+            option = ValidationUtility.inputChoice(scanner);
+
+            switch (option) {
+                case 1:
+                    System.out.println(loyaltyControl.viewPendingPointsQueue());
+                    break;
+                case 2:
+                    System.out.println(loyaltyControl.processNextPendingPointsCredit());
+                    break;
+                case 3:
+                    System.out.println(loyaltyControl.processAllPendingPointsCredits());
+                    break;
+                case 4:
+                    System.out.println(loyaltyControl.viewPendingPointsQueue());
+                    System.out.print("Enter Credit ID to reject: ");
+                    int creditID = ValidationUtility.inputChoice(scanner);
+                    System.out.println(loyaltyControl.rejectPendingPointsCredit(creditID));
+                    break;
+                case 5:
+                    grantPromotionalPointsUI();
+                    break;
+                case 0:
+                    break;
+                default:
+                    System.out.println("Invalid option.");
+            }
+        } while (option != 0);
+    }
+
+    private void grantPromotionalPointsUI() {
+        System.out.print("Enter Member ID: ");
+        int memberID = ValidationUtility.inputChoice(scanner);
+        System.out.print("Enter promotional points to grant: ");
+        int points = ValidationUtility.inputChoice(scanner);
+        System.out.print("Enter reason for this promotion (e.g. Birthday Promotion): ");
+        String reason = scanner.nextLine();
+        System.out.println(loyaltyControl.grantPromotionalPoints(memberID, points, reason));
     }
 
     private void viewTransactionsUI() {

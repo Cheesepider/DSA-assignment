@@ -11,6 +11,8 @@ import adt.ListInterface;
 import entity.Booking;
 import entity.Member;
 import entity.Member.LoyaltyTier;
+import entity.PendingPointsCredit;
+import entity.PendingPointsCredit.CreditSource;
 import entity.PointsTransaction;
 import entity.RedemptionRecord;
 import entity.RewardItem;
@@ -21,23 +23,44 @@ import utility.VirtualClock;
 
 /**
  * Control class for the Loyalty & Reward Service module.
- * Handles: earning points, redeeming rewards, automatic tier
- * upgrade/downgrade, member search (by ID/name/tier), reward catalog CRUD,
- * and generating reports (ranking, tier distribution, points expiry).
+ * Handles: member profile search, points ACCUMULATION (queued + explicitly
+ * processed by staff, from completed stays or personalized promotions),
+ * reward redemption, automatic tier progression, reward catalog CRUD, and
+ * generating reports (ranking, tier distribution, points expiry).
+ *
+ * -------------------------------------------------------------------
+ * DESIGN NOTE - Points Accumulation Queue (refactored)
+ * -------------------------------------------------------------------
+ * Previously, a completed/paid stay credited points to the member's
+ * balance immediately and silently, the instant the Loyalty module was
+ * reopened - there was no accumulation step staff could review or control.
+ *
+ * That is now split into two explicit stages, using the SAME team
+ * collection ADT (ListInterface/DoublyLinkedList) as a FIFO queue:
+ *   1. QUEUE   - queueCompletedStayPoints() scans for newly completed
+ *                stays and enqueues a PendingPointsCredit for each
+ *                (rear-insert via add()). grantPromotionalPoints() does
+ *                the same for staff-granted personalized promotions.
+ *   2. PROCESS - processNextPendingPointsCredit() / processAll... actually
+ *                apply a queued credit to the member's balance
+ *                (front-remove via remove(1)), at which point tier
+ *                progression is (re)evaluated. Staff may instead
+ *                rejectPendingPointsCredit() to discard an entry.
+ * This makes "points accumulation" its own auditable, staff-controlled use
+ * case (Create/Read/Process/Delete on the queue) instead of a hidden side
+ * effect, while keeping the ADT usage consistent with the rest of the
+ * module (one collection ADT, used creatively for more than one purpose).
  *
  * Sorting and searching algorithms are self-implemented (selection sort,
  * bubble sort, insertion sort, binary search, linear search) using the
- * team's shared ListInterface operations - including swap(), the new
- * operation added to the team's ADT. No java.util.Collections /
- * Arrays.sort / Java Collections Framework is used anywhere.
+ * team's shared ListInterface operations - including swap(). No
+ * java.util.Collections / Arrays.sort / Java Collections Framework is used
+ * anywhere.
  *
  * All date/time values come from utility.VirtualClock rather than the
  * real system clock, so the module stays in sync with the rest of the
  * application when the demo clock is advanced.
- */
-
-/**
- 
+ *
  * @author : Kao Yong Feng
  */
 public class LoyaltyControl {
@@ -45,10 +68,9 @@ public class LoyaltyControl {
     private ListInterface<Member> memberList;
 
     // static: shared across every LoyaltyControl instance for the lifetime of
-    // the program, so reward catalog / transaction history persist even
-    // though App.java creates a brand new LoyaltyUI/LoyaltyControl each time
-    // the Loyalty module is re-entered from the main menu. This mirrors how
-    // App.memberList already persists (it's a static field on App itself).
+    // the program, so reward catalog / transaction history / queues persist
+    // even though App.java creates a brand new LoyaltyUI/LoyaltyControl each
+    // time the Loyalty module is re-entered from the main menu.
     private static ListInterface<RewardItem> rewardCatalog;
     private static ListInterface<PointsTransaction> transactionList;
 
@@ -59,12 +81,18 @@ public class LoyaltyControl {
     // without needing a separate sort step.
     private static ListInterface<RedemptionRecord> redemptionHistory;
 
-    // bookingIDs that have already been credited with loyalty points, so
-    // processCompletedStayPoints() (which re-scans App.bookingHistoryList
-    // every time the module opens) never double-awards points for the same
-    // completed stay. Just our own ADT storing plain Integer values - not
-    // a second collection ADT type, same as storing any other object.
-    private static ListInterface<Integer> processedBookingIDs;
+    // FIFO queue of points that have been earned/granted but not yet
+    // credited to any member's balance. Rear-insert (add) when a stay
+    // completes or a promotion is granted; front-remove (remove(1)) when
+    // staff processes an entry. See class-level DESIGN NOTE above.
+    private static ListInterface<PendingPointsCredit> pendingPointsQueue;
+
+    // bookingIDs that have already been turned into a pending points
+    // credit, so queueCompletedStayPoints() (which re-scans
+    // App.bookingHistoryList every time the module opens) never queues the
+    // same completed stay twice - regardless of whether that credit has
+    // since been processed or rejected.
+    private static ListInterface<Integer> queuedStayBookingIDs;
 
     private static LoyaltyDAO loyaltyDAO = new LoyaltyDAO();
 
@@ -73,22 +101,17 @@ public class LoyaltyControl {
     private static final int DIAMOND_THRESHOLD = 3000;
     private static final int ELITE_THRESHOLD = 6000;
 
-    // Points earned expire this many months after the date they were earned
+    // Points earned expire this many months after the date they are CREDITED
     private static final int POINTS_VALIDITY_MONTHS = 12;
     // default look-ahead window (in days) for the expiry alert
     public static final int DEFAULT_EXPIRY_ALERT_DAYS = 30;
-    // conversion rate for earning points: every $10 actually spent on a
-    // completed, paid stay earns 1 loyalty point (see earnPointsForStay()).
-    // This is the ONLY way points are earned - there is deliberately no
-    // manual/arbitrary "add points" path left in this module anymore.
+    // conversion rate for earning points from a stay: every $1 actually
+    // spent on a completed, paid stay earns 1 loyalty point.
     private static final double DOLLARS_PER_POINT = 1.0;
 
     // standalone mode: uses RegistrationDAO's member data (App.memberList)
     // so that this module can still be run/tested independently, without
     // duplicating a separate set of hardcoded members just for this module.
-    // If App.memberList hasn't been populated yet (e.g. running LoyaltyUI's
-    // main() directly, without going through the full App startup), it is
-    // seeded here first.
     public LoyaltyControl() {
         if (App.memberList.isEmpty()) {
             RegistrationDAO.initializeMemberData();
@@ -105,17 +128,14 @@ public class LoyaltyControl {
         ensureSharedDataInitialized();
     }
 
-    // reward catalog and transaction history are only seeded once per
-    // program run (guarded by the null check), instead of being rebuilt
-    // every time a new LoyaltyControl is constructed - so data added or
-    // changed during one visit to the module is still there the next time
-    // the module is opened, without needing any changes to App.java
+    // reward catalog / transaction history / queues are only seeded once
+    // per program run (guarded by the null check), instead of being
+    // rebuilt every time a new LoyaltyControl is constructed.
     //
-    // static (not per-instance) because processCompletedStayPoints() runs
-    // as an independent scan of shared App state (not a call triggered by
+    // static (not per-instance) because queueCompletedStayPoints() runs as
+    // an independent scan of shared App state (not a call triggered by
     // another module), so this needs to work with no LoyaltyControl
-    // instance necessarily existing yet. Uses App.memberList directly
-    // (rather than the instance's memberList field) for the same reason.
+    // instance necessarily existing yet.
     private static void ensureSharedDataInitialized() {
         if (rewardCatalog == null) {
             rewardCatalog = loyaltyDAO.initializeRewardCatalog();
@@ -126,134 +146,80 @@ public class LoyaltyControl {
         if (redemptionHistory == null) {
             redemptionHistory = new DoublyLinkedList<>();
         }
-        if (processedBookingIDs == null) {
-            processedBookingIDs = new DoublyLinkedList<>();
+        if (pendingPointsQueue == null) {
+            pendingPointsQueue = new DoublyLinkedList<>();
+        }
+        if (queuedStayBookingIDs == null) {
+            queuedStayBookingIDs = new DoublyLinkedList<>();
         }
     }
 
     // =========================================================
-    // Use Case 1: Earn Loyalty Points (from a completed, paid stay ONLY)
+    // Use Case 1a: Queue Points From Completed Stays (Create - into queue)
     // =========================================================
-
-    /**
-     * Awards loyalty points for a COMPLETED, PAID stay - this is the only
-     * way points can be earned. There used to be a manual "Earn Loyalty
-     * Points" menu option where staff typed in an arbitrary point amount
-     * for any member at any time, with no justification tied to it; that
-     * has been removed entirely. Points are now always a direct, auditable
-     * function of money actually spent at the hotel, so every
-     * PointsTransaction can be explained by a real stay.
-     *
-     * Called by processCompletedStayPoints() once it finds a checked-out
-     * stay's final bill - completing and paying for a stay IS the reason
-     * for the points, not a free-form UI entry.
-     *
-     * static because this module discovers completed stays on its own (via
-     * a scan of the shared App state, not a call from the Registration
-     * module - see processCompletedStayPoints()), so there is no
-     * LoyaltyControl instance necessarily available at the point this runs.
-     * This mirrors rewardCatalog/transactionList already being shared
-     * static state rather than per-instance state.
-     *
-     * @param member      the member who completed the stay
-     * @param amountSpent the final bill amount for the stay, in dollars
-     * @return a summary message, or an empty string if member is null or
-     *         the spend didn't qualify for any points
-     */
-    public static String earnPointsForStay(Member member, double amountSpent) {
-        ensureSharedDataInitialized();
-        if (member == null || amountSpent <= 0) {
-            return "";
-        }
-
-        int pointsEarned = (int) (amountSpent / DOLLARS_PER_POINT);
-        if (pointsEarned <= 0) {
-            return "";
-        }
-
-        // member is the same object reference stored inside App.memberList
-        // (the ADT stores references, not copies), so mutating it here
-        // already updates the shared list directly - no replace() call needed
-        member.setLoyaltyPoints(member.getLoyaltyPoints() + pointsEarned);
-        String tierMessage = updateTier(member);
-
-        LocalDate earnedDate = VirtualClock.getInstance().today();
-        LocalDate expiryDate = earnedDate.plusMonths(POINTS_VALIDITY_MONTHS);
-
-        // Each member has ONE consolidated points-transaction record (not a
-        // separate batch per earn) - View Points Transactions should always
-        // show a single row per member with their combined point total.
-        // Earning more points adds onto that existing record and resets its
-        // expiry to count down from today again; a member with no record
-        // yet gets a new one.
-        PointsTransaction existing = findTransactionByMemberID(member.getMemberID());
-        if (existing != null) {
-            existing.setPointsEarned(existing.getPointsEarned() + pointsEarned);
-            existing.setEarnedDate(earnedDate);
-            existing.setExpiryDate(expiryDate);
-        } else {
-            transactionList.add(new PointsTransaction(member.getMemberID(), member.getMemberName(),
-                    pointsEarned, earnedDate, expiryDate));
-        }
-
-        StringBuilder sb = new StringBuilder();
-        sb.append(member.getMemberName()).append(" earned ").append(pointsEarned)
-          .append(" loyalty point(s) from this stay ($").append(String.format("%.2f", amountSpent))
-          .append(" spent). New balance: ").append(member.getLoyaltyPoints()).append(" points.");
-        if (!tierMessage.isEmpty()) {
-            sb.append("\n").append(tierMessage);
-        }
-        return sb.toString();
-    }
-
-    // Returns the given member's single consolidated points-transaction
-    // record, or null if the member has never earned any points yet.
-    private static PointsTransaction findTransactionByMemberID(int memberID) {
-        for (int i = 1; i <= transactionList.getNumberOfEntries(); i++) {
-            PointsTransaction t = transactionList.getEntry(i);
-            if (t.getMemberID() == memberID) {
-                return t;
-            }
-        }
-        return null;
-    }
 
     /**
      * Scans App.bookingHistoryList for stays that have finished CHECKED_OUT
-     * but haven't been credited with loyalty points yet, and awards points
-     * for each one via earnPointsForStay().
+     * but haven't been queued for points accumulation yet, and enqueues a
+     * PendingPointsCredit for each one. Points are NOT credited to the
+     * member here - that only happens when staff explicitly processes the
+     * queue (see processNextPendingPointsCredit / processAllPendingPointsCredits).
      *
      * This exists because the Registration module (owned by a teammate) is
      * NOT modified to call into this module directly - instead, this module
-     * independently discovers completed stays from the shared App state and
-     * credits them itself. processedBookingIDs prevents the same booking
-     * from being credited twice across repeated calls (e.g. every time the
-     * Loyalty module is reopened, this re-scans the whole history list).
+     * independently discovers completed stays from the shared App state.
+     * queuedStayBookingIDs prevents the same booking from being queued
+     * twice across repeated calls (e.g. every time the Loyalty module is
+     * reopened, this re-scans the whole history list).
      *
-     * @return a summary line per member credited, or an empty string if
-     *         there was nothing new to process
+     * static for the same reason as before: it is invoked as soon as the
+     * Loyalty module opens, independent of any particular instance.
+     *
+     * @return a summary of newly queued credits, or an empty string if
+     *         there was nothing new to queue
      */
-    public static String processCompletedStayPoints() {
+    public static String queueCompletedStayPoints() {
         ensureSharedDataInitialized();
         StringBuilder sb = new StringBuilder();
+        int newlyQueuedCount = 0;
 
         for (int i = 1; i <= App.bookingHistoryList.getNumberOfEntries(); i++) {
             Booking b = App.bookingHistoryList.getEntry(i);
             if (b.getBookingStatus() != Booking.BookingStatus.CHECKED_OUT) {
                 continue; // only completed, paid stays earn points - not cancellations
             }
-            if (processedBookingIDs.contains(b.getBookingID())) {
-                continue; // already credited on a previous scan
+            if (queuedStayBookingIDs.contains(b.getBookingID())) {
+                continue; // already queued on a previous scan
             }
 
+            // mark as queued regardless of outcome below, so a $0 stay is
+            // never re-evaluated on every future scan either
+            queuedStayBookingIDs.add(b.getBookingID());
+
+            Member member = b.getMember();
             double amountSpent = calculateStayBill(b);
-            String message = earnPointsForStay(b.getMember(), amountSpent);
-            if (!message.isEmpty()) {
-                sb.append(message).append("\n");
+            int pointsEarned = (int) (amountSpent / DOLLARS_PER_POINT);
+            if (pointsEarned <= 0 || member == null) {
+                continue;
             }
-            processedBookingIDs.add(b.getBookingID());
+
+            String sourceDetail = "Booking #" + b.getBookingID() + " ($" +
+                    String.format("%.2f", amountSpent) + " spent)";
+            PendingPointsCredit credit = new PendingPointsCredit(member.getMemberID(), member.getMemberName(),
+                    CreditSource.STAY, sourceDetail, pointsEarned, VirtualClock.getInstance().today());
+            pendingPointsQueue.add(credit);
+            newlyQueuedCount++;
+
+            sb.append(member.getMemberName()).append(" - ").append(sourceDetail)
+              .append(": ").append(pointsEarned).append(" point(s) pending accumulation.\n");
         }
 
+        if (newlyQueuedCount == 0) {
+            return "";
+        }
+        sb.append("\n").append(newlyQueuedCount)
+          .append(" new completed stay(s) queued for points accumulation. ")
+          .append("Go to 'Points Accumulation Queue' to review and credit them.");
         return sb.toString();
     }
 
@@ -299,6 +265,177 @@ public class LoyaltyControl {
             }
             return actualNights * rate;
         }
+    }
+
+    // =========================================================
+    // Use Case 1b: Personalized Promotion (Create - into queue)
+    // =========================================================
+
+    /**
+     * Grants a member bonus/promotional points for a staff-specified reason
+     * (e.g. birthday promotion, service-recovery gesture, loyalty
+     * campaign). Like stay-earned points, promotional points are queued
+     * rather than credited immediately - every point that ever reaches a
+     * member's balance goes through the same reviewable accumulation
+     * queue, so nothing is credited "invisibly", but staff CAN initiate a
+     * grant for a specific member's profile at any time (this is the
+     * "members' profile - personalized promotion" capability of the
+     * module).
+     *
+     * @param memberID the member to grant points to
+     * @param points   number of bonus points to queue (must be positive)
+     * @param reason   staff-entered justification, shown in the queue and
+     *                 required for audit purposes
+     */
+    public String grantPromotionalPoints(int memberID, int points, String reason) {
+        Member member = findMemberByID(memberID);
+        if (member == null) {
+            return "Member with ID " + memberID + " not found.";
+        }
+        if (points <= 0) {
+            return "Promotional points must be a positive value.";
+        }
+        if (reason == null || reason.trim().isEmpty()) {
+            return "A reason is required for a personalized promotion grant.";
+        }
+
+        PendingPointsCredit credit = new PendingPointsCredit(member.getMemberID(), member.getMemberName(),
+                CreditSource.PROMOTION, reason.trim(), points, VirtualClock.getInstance().today());
+        pendingPointsQueue.add(credit);
+        return "Queued " + points + " promotional point(s) for " + member.getMemberName() +
+                " (reason: " + reason.trim() + "). Process the queue to credit them.";
+    }
+
+    // =========================================================
+    // Use Case 1c: Points Accumulation Queue - Read / Process / Reject
+    // =========================================================
+
+    /** Number of credits currently waiting to be processed - used for the module-open alert banner. */
+    public int getPendingPointsQueueCount() {
+        return pendingPointsQueue.getNumberOfEntries();
+    }
+
+    // ---- Read ----
+    public String viewPendingPointsQueue() {
+        StringBuilder sb = new StringBuilder();
+        sb.append(ReportFormatUtility.buildHeader("PENDING POINTS ACCUMULATION QUEUE", VirtualClock.getInstance().now()));
+        sb.append(String.format("%-8s %-10s %-18s %-10s %-8s %-12s %-30s%n",
+                "CreditID", "MemberID", "Member Name", "Source", "Points", "Queued On", "Detail"));
+        sb.append(ReportFormatUtility.separatorLine());
+
+        DateTimeFormatter dateFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd");
+        int total = pendingPointsQueue.getNumberOfEntries();
+        for (int i = 1; i <= total; i++) {
+            PendingPointsCredit c = pendingPointsQueue.getEntry(i);
+            sb.append(String.format("%-8d %-10d %-18s %-10s %-8d %-12s %-30s%n",
+                    c.getCreditID(), c.getMemberID(), c.getMemberName(), c.getSource(),
+                    c.getPointsToCredit(), c.getDateQueued().format(dateFormatter), c.getSourceDetail()));
+        }
+        sb.append(ReportFormatUtility.buildFooter("Total pending credits", total,
+                "No points are currently pending accumulation. The next-position (front) entry is processed first."));
+        return sb.toString();
+    }
+
+    // ---- Process one (front of queue) ----
+    public String processNextPendingPointsCredit() {
+        if (pendingPointsQueue.isEmpty()) {
+            return "No pending points credits to process.";
+        }
+        PendingPointsCredit next = pendingPointsQueue.remove(1); // dequeue from front (FIFO)
+        Member member = findMemberByID(next.getMemberID());
+        if (member == null) {
+            return "Skipped credit ID " + next.getCreditID() + ": member " + next.getMemberID() + " no longer exists.";
+        }
+        String label = next.getSource() + " - " + next.getSourceDetail();
+        return creditPointsToMember(member, next.getPointsToCredit(), label);
+    }
+
+    // ---- Process all (drains the whole queue, front to rear) ----
+    public String processAllPendingPointsCredits() {
+        if (pendingPointsQueue.isEmpty()) {
+            return "No pending points credits to process.";
+        }
+        StringBuilder sb = new StringBuilder();
+        int total = pendingPointsQueue.getNumberOfEntries();
+        for (int i = 0; i < total; i++) {
+            sb.append(processNextPendingPointsCredit()).append("\n\n");
+        }
+        return sb.toString().trim();
+    }
+
+    // ---- Delete (reject without crediting) ----
+    public String rejectPendingPointsCredit(int creditID) {
+        // PendingPointsCredit.equals() compares only creditID, so a "probe"
+        // object with just the ID set is enough for the ADT's indexOf() to
+        // find the real match position - same pattern as findRewardPosition().
+        PendingPointsCredit probe = new PendingPointsCredit();
+        probe.setCreditID(creditID);
+        int position = pendingPointsQueue.indexOf(probe);
+        if (position == -1) {
+            return "Pending credit with ID " + creditID + " not found in queue.";
+        }
+        PendingPointsCredit removed = pendingPointsQueue.remove(position);
+        return "Rejected credit ID " + creditID + ": " + removed.getPointsToCredit() +
+                " point(s) for " + removed.getMemberName() + " (" + removed.getSourceDetail() +
+                ") will NOT be accumulated.";
+    }
+
+    // =========================================================
+    // Shared crediting logic - the ONLY place a member's balance actually
+    // changes upward. Called exclusively from queue processing above, so
+    // every point on a member's account can be traced back to a queue
+    // entry (a completed stay or an approved promotion).
+    // =========================================================
+    private static String creditPointsToMember(Member member, int pointsToCredit, String sourceLabel) {
+        if (member == null || pointsToCredit <= 0) {
+            return "";
+        }
+
+        // member is the same object reference stored inside App.memberList
+        // (the ADT stores references, not copies), so mutating it here
+        // already updates the shared list directly - no replace() call needed
+        member.setLoyaltyPoints(member.getLoyaltyPoints() + pointsToCredit);
+        String tierMessage = updateTier(member);
+
+        LocalDate earnedDate = VirtualClock.getInstance().today();
+        LocalDate expiryDate = earnedDate.plusMonths(POINTS_VALIDITY_MONTHS);
+
+        // Each member has ONE consolidated points-transaction record (not a
+        // separate batch per credit) - View Points Transactions should
+        // always show a single row per member with their combined point
+        // total. Crediting more points adds onto that existing record and
+        // resets its expiry to count down from today again; a member with
+        // no record yet gets a new one.
+        PointsTransaction existing = findTransactionByMemberID(member.getMemberID());
+        if (existing != null) {
+            existing.setPointsEarned(existing.getPointsEarned() + pointsToCredit);
+            existing.setEarnedDate(earnedDate);
+            existing.setExpiryDate(expiryDate);
+        } else {
+            transactionList.add(new PointsTransaction(member.getMemberID(), member.getMemberName(),
+                    pointsToCredit, earnedDate, expiryDate));
+        }
+
+        StringBuilder sb = new StringBuilder();
+        sb.append(member.getMemberName()).append(" credited with ").append(pointsToCredit)
+          .append(" point(s) [").append(sourceLabel).append("]. New balance: ")
+          .append(member.getLoyaltyPoints()).append(" points.");
+        if (!tierMessage.isEmpty()) {
+            sb.append("\n").append(tierMessage);
+        }
+        return sb.toString();
+    }
+
+    // Returns the given member's single consolidated points-transaction
+    // record, or null if the member has never had any points credited yet.
+    private static PointsTransaction findTransactionByMemberID(int memberID) {
+        for (int i = 1; i <= transactionList.getNumberOfEntries(); i++) {
+            PointsTransaction t = transactionList.getEntry(i);
+            if (t.getMemberID() == memberID) {
+                return t;
+            }
+        }
+        return null;
     }
 
     // =========================================================
@@ -351,8 +488,15 @@ public class LoyaltyControl {
     }
 
     // =========================================================
-    // Use Case 3: Automatic Tier Upgrade / Downgrade
+    // Use Case 3: Automatic Tier Progression (upgrade / downgrade)
     // =========================================================
+    // Tier is always a pure function of the CURRENT points balance, so it
+    // is re-evaluated at every point where that balance changes -
+    // crediting (creditPointsToMember) and redeeming (redeemReward). There
+    // is deliberately no separate manual "process tier upgrade" step: a
+    // member's tier should never be able to drift out of sync with their
+    // points, so it is recalculated automatically the instant the balance
+    // that determines it changes.
     private static String updateTier(Member member) {
         LoyaltyTier oldTier = member.getLoyaltyTier();
         LoyaltyTier newTier;
@@ -738,7 +882,7 @@ public class LoyaltyControl {
         // existingReward is the same object reference stored inside
         // rewardCatalog, so mutating its fields here already updates the
         // catalog directly - no replace() call is needed (same reasoning
-        // as earnPointsForStay()/redeemReward() mutating Member directly)
+        // as creditPointsToMember()/redeemReward() mutating Member directly)
         RewardItem existingReward = rewardCatalog.getEntry(position);
         existingReward.setRewardName(newName);
         existingReward.setPointsRequired(newPointsRequired);
