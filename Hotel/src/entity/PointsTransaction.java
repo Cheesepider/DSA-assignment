@@ -12,7 +12,7 @@ import java.util.concurrent.atomic.AtomicInteger;
  *
  * Plain old Java object (POJO) - no input/output statements here.
  *
- * @author (Loyalty & Reward Service module)
+ * @author: Kao Yong Feng
  */
 public class PointsTransaction {
 

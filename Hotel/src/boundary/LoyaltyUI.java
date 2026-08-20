@@ -8,6 +8,11 @@ import entity.Member;
 import entity.Member.LoyaltyTier;
 import utility.ValidationUtility;
 
+/**
+ 
+ * @author : Kao Yong Feng
+ */
+
 public class LoyaltyUI {
 
     private LoyaltyControl loyaltyControl;

@@ -4,6 +4,10 @@
  */
 package boundary;
 
+/**
+ * @author Tham Cle Ment
+ */
+
 import java.util.Scanner;
 import utility.VirtualClock;
 import control.BookingControl;

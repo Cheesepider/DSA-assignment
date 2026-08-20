@@ -4,6 +4,10 @@
  */
 package boundary;
 
+/**
+ * @author Tham Cle Ment
+ */
+
 import java.util.Scanner;
 import utility.VirtualClock;
 import control.BookingControl;
@@ -94,12 +98,33 @@ public class RegistrationUI {
     }
 
     private Member registerNewCustomer(Scanner scanner) {
-        System.out.print("Enter customer name: ");
-        String name = scanner.nextLine().trim();
-        System.out.print("Enter customer phone number: ");
-        String phoneNumber = scanner.nextLine().trim();
-        System.out.print("Enter customer email: ");
-        String email = scanner.nextLine().trim();
+        String name;
+        while (true) {
+            System.out.print("Enter customer name: ");
+            name = scanner.nextLine().trim();
+            if (!name.isEmpty()) {
+                break;
+            }
+            System.out.println("Name cannot be empty. Please try again.");
+        }
+        String phoneNumber;
+        while (true) {
+            System.out.print("Enter customer phone number: ");
+            phoneNumber = scanner.nextLine().trim();
+            if (phoneNumber.matches("\\d{7,15}")) {
+                break;
+            }
+            System.out.println("Phone number must be 7-15 digits. Please try again.");
+        }
+        String email;
+        while (true) {
+            System.out.print("Enter customer email: ");
+            email = scanner.nextLine().trim();
+            if (email.matches("^\\S+@\\S+\\.\\S+$")) {
+                break;
+            }
+            System.out.println("Invalid email format. Please try again.");
+        }
         return RegistrationControl.registerNewCustomer(name, phoneNumber, email);
     }
 
@@ -200,13 +225,19 @@ public class RegistrationUI {
         System.out.print("Enter Year (YYYY) or press Enter for current year [" + year + "]: ");
         String yearStr = scanner.nextLine().trim();
         if (!yearStr.isEmpty()) {
-            try { year = Integer.parseInt(yearStr); } catch (Exception ignored) {}
+            try {
+                year = Integer.parseInt(yearStr);
+            } catch (Exception ignored) {
+            }
         }
 
         System.out.print("Enter Month (1-12) or press Enter for current month [" + month + "]: ");
         String monthStr = scanner.nextLine().trim();
         if (!monthStr.isEmpty()) {
-            try { month = Integer.parseInt(monthStr); } catch (Exception ignored) {}
+            try {
+                month = Integer.parseInt(monthStr);
+            } catch (Exception ignored) {
+            }
         }
 
         System.out.println("Select Booking Status Filter:");
@@ -218,10 +249,14 @@ public class RegistrationUI {
         System.out.print("Choice: ");
         String statusChoice = scanner.nextLine().trim();
         entity.Booking.BookingStatus sFilter = null;
-        if (statusChoice.equals("1")) sFilter = entity.Booking.BookingStatus.CONFIRMED;
-        else if (statusChoice.equals("2")) sFilter = entity.Booking.BookingStatus.CHECKED_IN;
-        else if (statusChoice.equals("3")) sFilter = entity.Booking.BookingStatus.CHECKED_OUT;
-        else if (statusChoice.equals("4")) sFilter = entity.Booking.BookingStatus.CANCELLED;
+        if (statusChoice.equals("1"))
+            sFilter = entity.Booking.BookingStatus.CONFIRMED;
+        else if (statusChoice.equals("2"))
+            sFilter = entity.Booking.BookingStatus.CHECKED_IN;
+        else if (statusChoice.equals("3"))
+            sFilter = entity.Booking.BookingStatus.CHECKED_OUT;
+        else if (statusChoice.equals("4"))
+            sFilter = entity.Booking.BookingStatus.CANCELLED;
 
         RegistrationControl.generateBookingSummaryReport(year, month, sFilter);
     }
@@ -234,13 +269,19 @@ public class RegistrationUI {
         System.out.print("Enter Year (YYYY) or press Enter for current year [" + year + "]: ");
         String yearStr = scanner.nextLine().trim();
         if (!yearStr.isEmpty()) {
-            try { year = Integer.parseInt(yearStr); } catch (Exception ignored) {}
+            try {
+                year = Integer.parseInt(yearStr);
+            } catch (Exception ignored) {
+            }
         }
 
         System.out.print("Enter Month (1-12) or press Enter for current month [" + month + "]: ");
         String monthStr = scanner.nextLine().trim();
         if (!monthStr.isEmpty()) {
-            try { month = Integer.parseInt(monthStr); } catch (Exception ignored) {}
+            try {
+                month = Integer.parseInt(monthStr);
+            } catch (Exception ignored) {
+            }
         }
 
         System.out.println("Select Room Type Filter:");
@@ -251,9 +292,12 @@ public class RegistrationUI {
         System.out.print("Choice: ");
         String typeChoice = scanner.nextLine().trim();
         entity.Room.RoomType tFilter = null;
-        if (typeChoice.equals("1")) tFilter = entity.Room.RoomType.SINGLE;
-        else if (typeChoice.equals("2")) tFilter = entity.Room.RoomType.DOUBLE;
-        else if (typeChoice.equals("3")) tFilter = entity.Room.RoomType.SUITE;
+        if (typeChoice.equals("1"))
+            tFilter = entity.Room.RoomType.SINGLE;
+        else if (typeChoice.equals("2"))
+            tFilter = entity.Room.RoomType.DOUBLE;
+        else if (typeChoice.equals("3"))
+            tFilter = entity.Room.RoomType.SUITE;
 
         RegistrationControl.generateRevenueSummaryReport(year, month, tFilter);
     }

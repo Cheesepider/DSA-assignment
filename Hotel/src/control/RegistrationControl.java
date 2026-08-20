@@ -4,6 +4,10 @@
  */
 package control;
 
+/**
+ * @author Tham Cle Ment
+ */
+
 import java.util.Objects;
 import utility.VirtualClock;
 import adt.ListInterface;

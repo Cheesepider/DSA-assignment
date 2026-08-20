@@ -6,10 +6,7 @@ package entity;
 
 import java.util.concurrent.atomic.AtomicInteger;
 
-/**
- *
- * @author jlohz
- */
+
 public class Member {
     private static final AtomicInteger memberIDCounter = new AtomicInteger(1);
 
