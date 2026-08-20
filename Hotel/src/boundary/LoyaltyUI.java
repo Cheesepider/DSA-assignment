@@ -612,19 +612,7 @@ public class LoyaltyUI {
 
         System.out.println("\n--- Generate Loyalty Member Report ---");
 
-        System.out.print("Search by Member ID / Name / Tier (leave blank for all): ");
-        String keyword = scanner.nextLine().trim();
-
-        System.out.println("\nSelect Sort Option:");
-        System.out.println("1. Spendable Points (High to Low)");
-        System.out.println("2. Member Name (A-Z)");
-        System.out.println("3. Loyalty Tier (High to Low)");
-        System.out.println("4. Member ID (Ascending)");
-
-        System.out.print("Enter choice (default 1): ");
-        int sortOption = readSortChoice();
-
-        ListInterface<Member> filteredList = control.getFilteredAndSortedMembers(keyword, sortOption);
+        ListInterface<Member> filteredList = control.getAllMembers();
 
         int totalMembers = control.countTotalMembers();
         int totalPoints = control.countTotalSpendablePoints();
@@ -638,11 +626,9 @@ public class LoyaltyUI {
         System.out.println("\n==========================================================================");
         System.out.println("    Tunku Abdul Rahman University of Management and Technology Resort");
         System.out.println("                    Loyalty & Reward Service Subsystem");
-        System.out.println("\n                 LOYALTY MEMBER RANKING & SUMMARY REPORT");
+        System.out.println("\n                 LOYALTY MEMBER SUMMARY REPORT");
         System.out.println("==========================================================================");
         System.out.println("Generated At          : " + reportTime);
-        System.out.println("Search Filter         : " + (keyword.isEmpty() ? "All Members" : keyword));
-        System.out.println("Sort Option           : " + getSortOptionLabel(sortOption));
         System.out.println("--------------------------------------------------------------------------");
         System.out.printf("%-30s : %d%n", "Total Registered Members", totalMembers);
         System.out.printf("%-30s : %d%n", "Total Spendable Points", totalPoints);
@@ -656,7 +642,7 @@ public class LoyaltyUI {
         System.out.println("                                      MEMBER DETAILS");
         System.out.println("==========================================================================================");
         System.out.printf("%-6s %-10s %-20s %-12s %-12s %-15s%n",
-                "Rank", "Member ID", "Member Name", "Tier", "Points", "Lifetime Earned");
+                "No.", "Member ID", "Member Name", "Tier", "Points", "Lifetime Earned");
         System.out.println("------------------------------------------------------------------------------------------");
 
         for (int i = 1; i <= filteredList.getNumberOfEntries(); i++) {
@@ -677,35 +663,9 @@ public class LoyaltyUI {
         System.out.println("Note: Points = current spendable balance. Lifetime Earned = total earned (determines Tier).");
 
         if (filteredList.isEmpty()) {
-            System.out.println("No members match the search criteria.");
+            System.out.println("No members found.");
         } else {
-            printVerticalBarChart(eliteCount, diamondCount, platinumCount, regularCount);
-        }
-    }
-
-    private String getSortOptionLabel(int sortOption) {
-
-        switch (sortOption) {
-            case LoyaltyControl.SORT_BY_NAME:
-                return "Member Name (A-Z)";
-            case LoyaltyControl.SORT_BY_TIER:
-                return "Loyalty Tier (High to Low)";
-            case LoyaltyControl.SORT_BY_MEMBER_ID:
-                return "Member ID (Ascending)";
-            case LoyaltyControl.SORT_BY_POINTS:
-            default:
-                return "Spendable Points (High to Low)";
-        }
-    }
-
-    private int readSortChoice() {
-
-        String input = scanner.nextLine().trim();
-
-        try {
-            return Integer.parseInt(input);
-        } catch (NumberFormatException e) {
-            return 1;
+            printMemberPointsBarChart(filteredList);
         }
     }
 
@@ -774,19 +734,7 @@ public class LoyaltyUI {
 
         System.out.println("\n--- View Redemption History ---");
 
-        System.out.print("Search by Member ID / Member Name / Reward Name (leave blank for all): ");
-        String keyword = scanner.nextLine().trim();
-
-        System.out.println("\nSelect Sort Option:");
-        System.out.println("1. Date (Newest First)");
-        System.out.println("2. Points Used (High to Low)");
-        System.out.println("3. Member Name (A-Z)");
-        System.out.println("4. Reward Name (A-Z)");
-
-        System.out.print("Enter choice (default 1): ");
-        int sortOption = readSortChoice();
-
-        ListInterface<RedemptionRecord> list = control.getFilteredAndSortedRedemptions(keyword, sortOption);
+        ListInterface<RedemptionRecord> list = control.getRedemptionHistory();
 
         DateTimeFormatter dateFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd");
 
@@ -796,7 +744,6 @@ public class LoyaltyUI {
         System.out.println("\n                 REWARD REDEMPTION HISTORY REPORT");
         System.out.println("==========================================================================");
         System.out.println("Generated At  : " + LocalDateTime.now());
-        System.out.println("Search Filter : " + (keyword.isEmpty() ? "All Redemptions" : keyword));
         System.out.println("--------------------------------------------------------------------------");
         System.out.printf("%-10s %-18s %-30s %-10s %-14s%n",
                 "Member ID", "Member Name", "Reward Redeemed", "Points", "Redeemed Date");
@@ -823,72 +770,110 @@ public class LoyaltyUI {
                 list.getNumberOfEntries(), totalPointsRedeemed);
 
         if (list.isEmpty()) {
-            System.out.println("No redemption records match the selected criteria.");
+            System.out.println("No redemption records found.");
+        } else {
+            printRedemptionCountByRewardChart(list);
         }
     }
 
-    private void printVerticalBarChart(
-            int eliteCount,
-            int diamondCount,
-            int platinumCount,
-            int regularCount) {
+    // Horizontal bar chart of each member's spendable points (replaces the
+    // old tier-count chart so the graph reflects individual member points).
+    private void printMemberPointsBarChart(ListInterface<Member> list) {
 
-        int[] counts = {
-            eliteCount,
-            diamondCount,
-            platinumCount,
-            regularCount
-        };
+        if (list.isEmpty()) {
+            return;
+        }
 
-        String[] labels = {
-            "Elite",
-            "Diamond",
-            "Platinum",
-            "Regular"
-        };
+        int maxPoints = 0;
 
-        int max = counts[0];
+        for (int i = 1; i <= list.getNumberOfEntries(); i++) {
 
-        for (int i = 1; i < counts.length; i++) {
-            if (counts[i] > max) {
-                max = counts[i];
+            int points = list.getEntry(i).getLoyaltyPoints();
+
+            if (points > maxPoints) {
+                maxPoints = points;
             }
         }
 
-        System.out.println("\nMEMBERS BY LOYALTY TIER\n");
-        System.out.println("Count");
-        System.out.println("  ^");
+        System.out.println("\nMEMBER SPENDABLE POINTS\n");
 
-        for (int level = max; level >= 1; level--) {
+        if (maxPoints == 0) {
+            System.out.println("No points to chart.");
+            return;
+        }
 
-            System.out.printf("%2d | ", level);
+        final int MAX_BAR_LENGTH = 40;
 
-            for (int count : counts) {
+        for (int i = 1; i <= list.getNumberOfEntries(); i++) {
 
-                if (count >= level) {
-                    System.out.printf("%-10s", "*");
-                } else {
-                    System.out.printf("%-10s", " ");
+            Member m = list.getEntry(i);
+            int barLength = (int) ((double) m.getLoyaltyPoints() / maxPoints * MAX_BAR_LENGTH);
+
+            StringBuilder bar = new StringBuilder();
+
+            for (int k = 0; k < barLength; k++) {
+                bar.append('*');
+            }
+
+            System.out.printf("%-20s | %-6d | %s%n", m.getMemberName(), m.getLoyaltyPoints(), bar.toString());
+        }
+    }
+
+    // Horizontal bar chart of how many times each catalog reward has been
+    // redeemed, built directly from the redemption history list.
+    private void printRedemptionCountByRewardChart(ListInterface<RedemptionRecord> redemptions) {
+
+        ListInterface<RewardItem> catalog = control.getRewardCatalog();
+
+        if (catalog.isEmpty() || redemptions.isEmpty()) {
+            return;
+        }
+
+        int[] redemptionCounts = new int[catalog.getNumberOfEntries() + 1]; // 1-indexed
+        int maxCount = 0;
+
+        for (int i = 1; i <= catalog.getNumberOfEntries(); i++) {
+
+            String rewardName = catalog.getEntry(i).getRewardName();
+            int count = 0;
+
+            for (int j = 1; j <= redemptions.getNumberOfEntries(); j++) {
+
+                if (redemptions.getEntry(j).getRewardName().equalsIgnoreCase(rewardName)) {
+                    count++;
                 }
             }
 
-            System.out.println();
+            redemptionCounts[i] = count;
+
+            if (count > maxCount) {
+                maxCount = count;
+            }
         }
 
-        System.out.print("   +");
+        System.out.println("\nREWARD REDEMPTION COUNT\n");
 
-        for (int i = 0; i < counts.length; i++) {
-            System.out.print("----------");
+        if (maxCount == 0) {
+            System.out.println("No redemptions to chart.");
+            return;
         }
 
-        System.out.println("> Loyalty Tier");
-        System.out.print("     ");
+        final int MAX_BAR_LENGTH = 40;
 
-        for (String label : labels) {
-            System.out.printf("%-10s", label);
+        for (int i = 1; i <= catalog.getNumberOfEntries(); i++) {
+
+            String rewardName = catalog.getEntry(i).getRewardName();
+            int count = redemptionCounts[i];
+            int barLength = (int) ((double) count / maxCount * MAX_BAR_LENGTH);
+
+            StringBuilder bar = new StringBuilder();
+
+            for (int k = 0; k < barLength; k++) {
+                bar.append('*');
+            }
+
+            System.out.printf("%-30s | %-5d | %s%n", rewardName, count, bar.toString());
         }
-
-        System.out.println();
     }
 
     public static void main(String[] args) {

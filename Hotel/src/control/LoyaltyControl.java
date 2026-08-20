@@ -638,6 +638,10 @@ public class LoyaltyControl {
         return null;
     }
 
+    public ListInterface<Member> getAllMembers() {
+        return App.memberList;
+    }
+
     public ListInterface<Member> searchMemberByName(String nameKeyword) {
 
         ListInterface<Member> results = new DoublyLinkedList<>();
