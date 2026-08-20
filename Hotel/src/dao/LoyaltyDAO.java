@@ -72,14 +72,19 @@ public class LoyaltyDAO {
         }
 
         // demo earnedDates cycled across members purely to showcase a mix of
-        // "expiring soon" and "not expiring soon" rows in the alert report
+        // "expiring soon", "not expiring soon", and "already expired" rows -
+        // the last entry is deliberately already past its 12-month validity
+        // (assigned to Frank Ho, the Elite member) purely so that
+        // LoyaltyControl.processExpiredPoints() has a real expired record to
+        // act on immediately at startup / when the Loyalty module is first
+        // opened, without needing to advance VirtualClock manually to test it
         LocalDate[] demoEarnedDates = {
             today.minusMonths(11).minusDays(24), // ~6 days left
             today.minusMonths(11).minusDays(19), // ~11 days left
             today.minusMonths(2),
             today.minusMonths(1),
             today.minusMonths(11).minusDays(12), // ~18 days left
-            today.minusDays(5)
+            today.minusMonths(13)                // already expired ~1 month ago
         };
 
         for (int i = 1; i <= total; i++) {
