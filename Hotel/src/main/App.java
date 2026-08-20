@@ -14,12 +14,14 @@ import entity.RewardItem;
 import entity.PointsTransaction;
 import entity.PendingPointsCredit;
 import entity.RedemptionRecord;
+import entity.LifetimeEarnedPoints;
 import dao.RegistrationDAO;
 import boundary.BookingUI;
 import boundary.HousekeepingUI;
 import boundary.RegistrationUI;
 import boundary.PriorityAllocationUI;
 import boundary.LoyaltyUI;
+import control.LoyaltyControl;
 import utility.VirtualClock;
 
 public class App {
@@ -40,11 +42,11 @@ public class App {
     public static ListInterface<TaskLog> taskLogStack = new DoublyLinkedList<>(); // use for undo stack
     public static ListInterface<TaskLog> cleaningHistoryList = new DoublyLinkedList<>(); // use for cleaning history
 
-    public static ListInterface<RewardItem> rewardCatalog = new DoublyLinkedList<>(); // rewards members can redeem with points
-    public static ListInterface<PointsTransaction> pointsTransactionList = new DoublyLinkedList<>(); // active earned-points batches (for expiry tracking)
-    public static ListInterface<PendingPointsCredit> pendingPointsQueue = new DoublyLinkedList<>(); // points credits awaiting staff processing
-    public static ListInterface<RedemptionRecord> redemptionHistoryList = new DoublyLinkedList<>(); // full reward redemption history
-    public static ListInterface<Integer> queuedStayBookingIDs = new DoublyLinkedList<>(); // booking IDs already queued for points (avoids double-queueing)
+    public static ListInterface<RewardItem> rewardCatalog = LoyaltyControl.rewardCatalog; // rewards members can redeem with points
+    public static ListInterface<PointsTransaction> pointsTransactionList = LoyaltyControl.pointsTransactionList; // active earned-points batches (for expiry tracking)
+    public static ListInterface<PendingPointsCredit> pendingPointsQueue = LoyaltyControl.pendingPointsQueue; // points credits awaiting staff processing
+    public static ListInterface<RedemptionRecord> redemptionHistoryList = LoyaltyControl.redemptionHistoryList; // full reward redemption history
+    public static ListInterface<LifetimeEarnedPoints> lifetimeEarnedList = LoyaltyControl.lifetimeEarnedList; // member lifetime earned points
 
     // =========================================================
     // Entry point
@@ -96,7 +98,7 @@ public class App {
                     break;
 
                 case 4:
-                    new LoyaltyUI(memberList).displayMenu();
+                    new LoyaltyUI().startUI();
                     break;
 
                 case 5:
