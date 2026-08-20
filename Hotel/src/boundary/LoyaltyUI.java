@@ -51,6 +51,7 @@ public class LoyaltyUI {
             System.out.println("6. Generate Loyalty Report (Ranked by Points)");
             System.out.println("7. Generate Tier Distribution Report");
             System.out.println("8. View Points Transactions (Alerts / Full History)");
+            System.out.println("9. View Redemption History (By Member / Full History)");
             System.out.println("0. Exit Loyalty Module");
             System.out.println("===============================================");
             System.out.print("Please select an option: ");
@@ -81,6 +82,9 @@ public class LoyaltyUI {
                     break;
                 case 8:
                     viewTransactionsUI();
+                    break;
+                case 9:
+                    viewRedemptionsUI();
                     break;
                 case 0:
                     System.out.println("Exiting Loyalty & Reward Module...");
@@ -152,6 +156,26 @@ public class LoyaltyUI {
                 break;
             case 2:
                 System.out.println(loyaltyControl.generateAllTransactionsReport());
+                break;
+            default:
+                System.out.println("Invalid option.");
+        }
+    }
+
+    private void viewRedemptionsUI() {
+        System.out.println("1. View One Member's Redemption History");
+        System.out.println("2. View All Redemptions (Full History)");
+        System.out.print("Please select an option: ");
+        int option = ValidationUtility.inputChoice(scanner);
+
+        switch (option) {
+            case 1:
+                System.out.print("Enter Member ID: ");
+                int memberID = ValidationUtility.inputChoice(scanner);
+                System.out.println(loyaltyControl.generateMemberRedemptionReport(memberID));
+                break;
+            case 2:
+                System.out.println(loyaltyControl.generateAllRedemptionsReport());
                 break;
             default:
                 System.out.println("Invalid option.");

@@ -11,6 +11,7 @@ import adt.ListInterface;
 import entity.Member;
 import entity.Member.LoyaltyTier;
 import entity.PointsTransaction;
+import entity.RedemptionRecord;
 import entity.RewardItem;
 import main.App;
 import utility.ReportFormatUtility;
@@ -48,6 +49,13 @@ public class LoyaltyControl {
     // App.memberList already persists (it's a static field on App itself).
     private static ListInterface<RewardItem> rewardCatalog;
     private static ListInterface<PointsTransaction> transactionList;
+
+    // records every successful redemption (member + reward + points + date)
+    // so members can look back at what they've redeemed, not just their
+    // current point balance. Newest redemption is always at position 1
+    // (see redeemReward()), so this list doubles as most-recent-first order
+    // without needing a separate sort step.
+    private static ListInterface<RedemptionRecord> redemptionHistory;
 
     private LoyaltyDAO loyaltyDAO = new LoyaltyDAO();
 
@@ -94,6 +102,9 @@ public class LoyaltyControl {
         }
         if (transactionList == null) {
             transactionList = loyaltyDAO.initializeTransactionData(memberList, POINTS_VALIDITY_MONTHS);
+        }
+        if (redemptionHistory == null) {
+            redemptionHistory = new DoublyLinkedList<>();
         }
     }
 
@@ -185,6 +196,14 @@ public class LoyaltyControl {
             int remainingPoints = existing.getPointsEarned() - reward.getPointsRequired();
             existing.setPointsEarned(Math.max(remainingPoints, 0));
         }
+
+        // record this redemption at the FRONT of the list (position 1) so
+        // redemptionHistory naturally stays newest-first, with no separate
+        // sort step needed when displaying it later
+        RedemptionRecord record = new RedemptionRecord(member.getMemberID(), member.getMemberName(),
+                reward.getRewardID(), reward.getRewardName(), reward.getPointsRequired(),
+                VirtualClock.getInstance().today());
+        redemptionHistory.add(1, record);
 
         StringBuilder sb = new StringBuilder();
         sb.append(member.getMemberName()).append(" redeemed \"").append(reward.getRewardName())
@@ -495,6 +514,62 @@ public class LoyaltyControl {
             sb.append(ReportFormatUtility.buildBarChart("DAYS LEFT UNTIL EXPIRY", labels, daysLeftValues, "days"));
         }
         sb.append(ReportFormatUtility.buildFooter("Total transactions", total, emptyMessage));
+        return sb.toString();
+    }
+
+    // =========================================================
+    // Use Case 8: View Redemption History (by member / full history)
+    // =========================================================
+
+    // linear search - returns only the given member's redemption records,
+    // already newest-first (redemptionHistory is maintained in that order)
+    public ListInterface<RedemptionRecord> searchRedemptionsByMemberID(int memberID) {
+        ListInterface<RedemptionRecord> results = new DoublyLinkedList<>();
+        for (int i = 1; i <= redemptionHistory.getNumberOfEntries(); i++) {
+            RedemptionRecord r = redemptionHistory.getEntry(i);
+            if (r.getMemberID() == memberID) {
+                results.add(r);
+            }
+        }
+        return results;
+    }
+
+    public String generateMemberRedemptionReport(int memberID) {
+        Member member = findMemberByID(memberID);
+        if (member == null) {
+            return "Member with ID " + memberID + " not found.";
+        }
+        ListInterface<RedemptionRecord> memberRedemptions = searchRedemptionsByMemberID(memberID);
+        return buildRedemptionReport(memberRedemptions,
+                "REDEMPTION HISTORY - " + member.getMemberName() + " (ID " + memberID + ")",
+                member.getMemberName() + " has not redeemed any rewards yet.");
+    }
+
+    public String generateAllRedemptionsReport() {
+        return buildRedemptionReport(redemptionHistory,
+                "ALL REWARD REDEMPTIONS (Full History)",
+                "No rewards have been redeemed yet.");
+    }
+
+    // shared formatting logic for both the per-member and full-history redemption reports
+    private String buildRedemptionReport(ListInterface<RedemptionRecord> list, String subtitle, String emptyMessage) {
+        DateTimeFormatter dateFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd");
+
+        StringBuilder sb = new StringBuilder();
+        sb.append(ReportFormatUtility.buildHeader(subtitle, VirtualClock.getInstance().now()));
+        sb.append(String.format("%-10s %-18s %-30s %-8s %-12s%n",
+                "MemberID", "Member Name", "Reward Redeemed", "Points", "Date"));
+        sb.append(ReportFormatUtility.separatorLine());
+
+        int total = list.getNumberOfEntries();
+        for (int i = 1; i <= total; i++) {
+            RedemptionRecord r = list.getEntry(i);
+            sb.append(String.format("%-10d %-18s %-30s %-8d %-12s%n",
+                    r.getMemberID(), r.getMemberName(), r.getRewardName(),
+                    r.getPointsUsed(), r.getRedeemedDate().format(dateFormatter)));
+        }
+
+        sb.append(ReportFormatUtility.buildFooter("Total redemptions", total, emptyMessage));
         return sb.toString();
     }
 
