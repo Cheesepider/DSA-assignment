@@ -31,19 +31,6 @@ public class LoyaltyControl {
     private ListInterface<Member> memberList;
 
     
-    private static ListInterface<RewardItem> rewardCatalog;
-    private static ListInterface<PointsTransaction> transactionList;
-
-  
-    private static ListInterface<RedemptionRecord> redemptionHistory;
-
-    
-    private static ListInterface<PendingPointsCredit> pendingPointsQueue;
-
-    
-    private static ListInterface<Integer> queuedStayBookingIDs;
-
-   
     private static class LifetimeEarnedPoints {
         private int memberID;
         private int totalEarned;
@@ -102,26 +89,28 @@ public class LoyaltyControl {
         ensureSharedDataInitialized();
     }
 
- 
+    
+    private static boolean sharedDataInitialized = false;
+
     private static void ensureSharedDataInitialized() {
-        if (rewardCatalog == null) {
-            rewardCatalog = loyaltyDAO.initializeRewardCatalog();
+        if (sharedDataInitialized) {
+            return;
         }
-        if (transactionList == null) {
-            transactionList = loyaltyDAO.initializeTransactionData(App.memberList, POINTS_VALIDITY_MONTHS);
+        if (App.rewardCatalog.isEmpty()) {
+            ListInterface<RewardItem> seededCatalog = loyaltyDAO.initializeRewardCatalog();
+            for (int i = 1; i <= seededCatalog.getNumberOfEntries(); i++) {
+                App.rewardCatalog.add(seededCatalog.getEntry(i));
+            }
         }
-        if (redemptionHistory == null) {
-            redemptionHistory = new DoublyLinkedList<>();
-        }
-        if (pendingPointsQueue == null) {
-            pendingPointsQueue = new DoublyLinkedList<>();
-        }
-        if (queuedStayBookingIDs == null) {
-            queuedStayBookingIDs = new DoublyLinkedList<>();
+        if (App.pointsTransactionList.isEmpty()) {
+            ListInterface<PointsTransaction> seededTransactions =
+                    loyaltyDAO.initializeTransactionData(App.memberList, POINTS_VALIDITY_MONTHS);
+            for (int i = 1; i <= seededTransactions.getNumberOfEntries(); i++) {
+                App.pointsTransactionList.add(seededTransactions.getEntry(i));
+            }
         }
         if (lifetimeEarnedList == null) {
             lifetimeEarnedList = new DoublyLinkedList<>();
-            
             for (int i = 1; i <= App.memberList.getNumberOfEntries(); i++) {
                 Member m = App.memberList.getEntry(i);
                 if (m.getLoyaltyPoints() > 0) {
@@ -129,6 +118,7 @@ public class LoyaltyControl {
                 }
             }
         }
+        sharedDataInitialized = true;
     }
 
    
@@ -169,12 +159,12 @@ public class LoyaltyControl {
             if (b.getBookingStatus() != Booking.BookingStatus.CHECKED_OUT) {
                 continue; // only completed, paid stays earn points - not cancellations
             }
-            if (queuedStayBookingIDs.contains(b.getBookingID())) {
+            if (App.queuedStayBookingIDs.contains(b.getBookingID())) {
                 continue; // already queued on a previous scan
             }
 
           
-            queuedStayBookingIDs.add(b.getBookingID());
+            App.queuedStayBookingIDs.add(b.getBookingID());
 
             Member member = b.getMember();
             double amountSpent = calculateStayBill(b);
@@ -187,7 +177,7 @@ public class LoyaltyControl {
                     String.format("%.2f", amountSpent) + " spent)";
             PendingPointsCredit credit = new PendingPointsCredit(member.getMemberID(), member.getMemberName(),
                     CreditSource.STAY, sourceDetail, pointsEarned, VirtualClock.getInstance().today());
-            pendingPointsQueue.add(credit);
+            App.pendingPointsQueue.add(credit);
             newlyQueuedCount++;
 
             sb.append(member.getMemberName()).append(" - ").append(sourceDetail)
@@ -251,14 +241,14 @@ public class LoyaltyControl {
 
         PendingPointsCredit credit = new PendingPointsCredit(member.getMemberID(), member.getMemberName(),
                 CreditSource.PROMOTION, reason.trim(), points, VirtualClock.getInstance().today());
-        pendingPointsQueue.add(credit);
+        App.pendingPointsQueue.add(credit);
         return "Queued " + points + " promotional point(s) for " + member.getMemberName() +
                 " (reason: " + reason.trim() + "). Process the queue to credit them.";
     }
 
    
     public int getPendingPointsQueueCount() {
-        return pendingPointsQueue.getNumberOfEntries();
+        return App.pendingPointsQueue.getNumberOfEntries();
     }
 
     // ---- Read ----
@@ -270,9 +260,9 @@ public class LoyaltyControl {
         sb.append(ReportFormatUtility.separatorLine());
 
         DateTimeFormatter dateFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd");
-        int total = pendingPointsQueue.getNumberOfEntries();
+        int total = App.pendingPointsQueue.getNumberOfEntries();
         for (int i = 1; i <= total; i++) {
-            PendingPointsCredit c = pendingPointsQueue.getEntry(i);
+            PendingPointsCredit c = App.pendingPointsQueue.getEntry(i);
             sb.append(String.format("%-8d %-10d %-18s %-10s %-8d %-12s %-30s%n",
                     c.getCreditID(), c.getMemberID(), c.getMemberName(), c.getSource(),
                     c.getPointsToCredit(), c.getDateQueued().format(dateFormatter), c.getSourceDetail()));
@@ -283,10 +273,10 @@ public class LoyaltyControl {
     }
 
     public String processNextPendingPointsCredit() {
-        if (pendingPointsQueue.isEmpty()) {
+        if (App.pendingPointsQueue.isEmpty()) {
             return "No pending points credits to process.";
         }
-        PendingPointsCredit next = pendingPointsQueue.remove(1); // dequeue from front (FIFO)
+        PendingPointsCredit next = App.pendingPointsQueue.remove(1); // dequeue from front (FIFO)
         Member member = findMemberByID(next.getMemberID());
         if (member == null) {
             return "Skipped credit ID " + next.getCreditID() + ": member " + next.getMemberID() + " no longer exists.";
@@ -296,11 +286,11 @@ public class LoyaltyControl {
     }
 
     public String processAllPendingPointsCredits() {
-        if (pendingPointsQueue.isEmpty()) {
+        if (App.pendingPointsQueue.isEmpty()) {
             return "No pending points credits to process.";
         }
         StringBuilder sb = new StringBuilder();
-        int total = pendingPointsQueue.getNumberOfEntries();
+        int total = App.pendingPointsQueue.getNumberOfEntries();
         for (int i = 0; i < total; i++) {
             sb.append(processNextPendingPointsCredit()).append("\n\n");
         }
@@ -311,11 +301,11 @@ public class LoyaltyControl {
         
         PendingPointsCredit probe = new PendingPointsCredit();
         probe.setCreditID(creditID);
-        int position = pendingPointsQueue.indexOf(probe);
+        int position = App.pendingPointsQueue.indexOf(probe);
         if (position == -1) {
             return "Pending credit with ID " + creditID + " not found in queue.";
         }
-        PendingPointsCredit removed = pendingPointsQueue.remove(position);
+        PendingPointsCredit removed = App.pendingPointsQueue.remove(position);
         return "Rejected credit ID " + creditID + ": " + removed.getPointsToCredit() +
                 " point(s) for " + removed.getMemberName() + " (" + removed.getSourceDetail() +
                 ") will NOT be accumulated.";
@@ -343,7 +333,7 @@ public class LoyaltyControl {
             existing.setEarnedDate(earnedDate);
             existing.setExpiryDate(expiryDate);
         } else {
-            transactionList.add(new PointsTransaction(member.getMemberID(), member.getMemberName(),
+            App.pointsTransactionList.add(new PointsTransaction(member.getMemberID(), member.getMemberName(),
                     pointsToCredit, earnedDate, expiryDate));
         }
 
@@ -359,8 +349,8 @@ public class LoyaltyControl {
 
    
     private static PointsTransaction findTransactionByMemberID(int memberID) {
-        for (int i = 1; i <= transactionList.getNumberOfEntries(); i++) {
-            PointsTransaction t = transactionList.getEntry(i);
+        for (int i = 1; i <= App.pointsTransactionList.getNumberOfEntries(); i++) {
+            PointsTransaction t = App.pointsTransactionList.getEntry(i);
             if (t.getMemberID() == memberID) {
                 return t;
             }
@@ -398,7 +388,7 @@ public class LoyaltyControl {
         RedemptionRecord record = new RedemptionRecord(member.getMemberID(), member.getMemberName(),
                 reward.getRewardID(), reward.getRewardName(), reward.getPointsRequired(),
                 VirtualClock.getInstance().today());
-        redemptionHistory.add(1, record);
+        App.redemptionHistoryList.add(1, record);
 
         return member.getMemberName() + " redeemed \"" + reward.getRewardName() +
                 "\" for " + reward.getPointsRequired() + " points. Remaining balance: " +
@@ -484,13 +474,13 @@ public class LoyaltyControl {
 
     private RewardItem findRewardByID(int rewardID) {
         int position = findRewardPosition(rewardID);
-        return position == -1 ? null : rewardCatalog.getEntry(position);
+        return position == -1 ? null : App.rewardCatalog.getEntry(position);
     }
 
     private int findRewardPosition(int rewardID) {
         RewardItem probe = new RewardItem();
         probe.setRewardID(rewardID);
-        return rewardCatalog.indexOf(probe);
+        return App.rewardCatalog.indexOf(probe);
     }
 
    
@@ -609,8 +599,8 @@ public class LoyaltyControl {
         StringBuilder sb = new StringBuilder();
         int expiredCount = 0;
 
-        for (int i = transactionList.getNumberOfEntries(); i >= 1; i--) {
-            PointsTransaction t = transactionList.getEntry(i);
+        for (int i = App.pointsTransactionList.getNumberOfEntries(); i >= 1; i--) {
+            PointsTransaction t = App.pointsTransactionList.getEntry(i);
             if (!today.isAfter(t.getExpiryDate())) {
                 continue; // today == expiryDate is still the last valid day, not expired yet
             }
@@ -626,7 +616,7 @@ public class LoyaltyControl {
                   .append(member.getLoyaltyPoints()).append(" points. (Tier is unaffected by expiry.)\n");
             }
 
-            transactionList.remove(i);
+            App.pointsTransactionList.remove(i);
             expiredCount++;
         }
 
@@ -653,8 +643,8 @@ public class LoyaltyControl {
     public int getExpiringTransactionCount(int daysThreshold) {
         int count = 0;
         LocalDate today = VirtualClock.getInstance().today();
-        for (int i = 1; i <= transactionList.getNumberOfEntries(); i++) {
-            PointsTransaction t = transactionList.getEntry(i);
+        for (int i = 1; i <= App.pointsTransactionList.getNumberOfEntries(); i++) {
+            PointsTransaction t = App.pointsTransactionList.getEntry(i);
             long daysLeft = ChronoUnit.DAYS.between(today, t.getExpiryDate());
             if (daysLeft >= 0 && daysLeft <= daysThreshold) {
                 count++;
@@ -668,8 +658,8 @@ public class LoyaltyControl {
 
         // collect only the transactions expiring within the threshold
         ListInterface<PointsTransaction> expiringList = new DoublyLinkedList<>();
-        for (int i = 1; i <= transactionList.getNumberOfEntries(); i++) {
-            PointsTransaction t = transactionList.getEntry(i);
+        for (int i = 1; i <= App.pointsTransactionList.getNumberOfEntries(); i++) {
+            PointsTransaction t = App.pointsTransactionList.getEntry(i);
             long daysLeft = ChronoUnit.DAYS.between(today, t.getExpiryDate());
             if (daysLeft >= 0 && daysLeft <= daysThreshold) {
                 expiringList.add(t);
@@ -683,7 +673,7 @@ public class LoyaltyControl {
     }
 
     public String generateAllTransactionsReport() {
-        ListInterface<PointsTransaction> allTransactions = transactionList.copy();
+        ListInterface<PointsTransaction> allTransactions = App.pointsTransactionList.copy();
         insertionSortByExpiryDate(allTransactions);
 
         return buildTransactionReport(allTransactions,
@@ -724,8 +714,8 @@ public class LoyaltyControl {
 
     public ListInterface<RedemptionRecord> searchRedemptionsByMemberID(int memberID) {
         ListInterface<RedemptionRecord> results = new DoublyLinkedList<>();
-        for (int i = 1; i <= redemptionHistory.getNumberOfEntries(); i++) {
-            RedemptionRecord r = redemptionHistory.getEntry(i);
+        for (int i = 1; i <= App.redemptionHistoryList.getNumberOfEntries(); i++) {
+            RedemptionRecord r = App.redemptionHistoryList.getEntry(i);
             if (r.getMemberID() == memberID) {
                 results.add(r);
             }
@@ -745,7 +735,7 @@ public class LoyaltyControl {
     }
 
     public String generateAllRedemptionsReport() {
-        return buildRedemptionReport(redemptionHistory,
+        return buildRedemptionReport(App.redemptionHistoryList,
                 "ALL REWARD REDEMPTIONS (Full History)",
                 "No rewards have been redeemed yet.");
     }
@@ -781,7 +771,7 @@ public class LoyaltyControl {
             return "Points required must be a positive value.";
         }
         RewardItem newReward = new RewardItem(rewardName, description, pointsRequired);
-        rewardCatalog.add(newReward);
+        App.rewardCatalog.add(newReward);
         return "New reward added: " + newReward.getRewardName() +
                 " (ID " + newReward.getRewardID() + ", " + newReward.getPointsRequired() + " points).";
     }
@@ -796,7 +786,7 @@ public class LoyaltyControl {
             return "Points required must be a positive value.";
         }
         
-        RewardItem existingReward = rewardCatalog.getEntry(position);
+        RewardItem existingReward = App.rewardCatalog.getEntry(position);
         existingReward.setRewardName(newName);
         existingReward.setPointsRequired(newPointsRequired);
         return "Reward ID " + rewardID + " updated successfully.";
@@ -807,7 +797,7 @@ public class LoyaltyControl {
         if (position == -1) {
             return "Reward with ID " + rewardID + " not found in catalog.";
         }
-        RewardItem removed = rewardCatalog.remove(position);
+        RewardItem removed = App.rewardCatalog.remove(position);
         return "Reward removed: " + removed.getRewardName() + " (ID " + removed.getRewardID() + ").";
     }
 
@@ -820,8 +810,8 @@ public class LoyaltyControl {
         sb.append(String.format("%-4s %-25s %-15s%n", "ID", "Reward Name", "Points Needed"));
         sb.append("-------------------------------------------------------------\n");
 
-        for (int i = 1; i <= rewardCatalog.getNumberOfEntries(); i++) {
-            RewardItem r = rewardCatalog.getEntry(i);
+        for (int i = 1; i <= App.rewardCatalog.getNumberOfEntries(); i++) {
+            RewardItem r = App.rewardCatalog.getEntry(i);
             sb.append(String.format("%-4d %-25s %-15d%n", r.getRewardID(), r.getRewardName(), r.getPointsRequired()));
         }
         sb.append("=============================================================\n");

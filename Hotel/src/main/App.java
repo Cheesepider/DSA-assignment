@@ -10,6 +10,10 @@ import entity.Booking;
 import entity.Member;
 import entity.Room;
 import entity.TaskLog;
+import entity.RewardItem;
+import entity.PointsTransaction;
+import entity.PendingPointsCredit;
+import entity.RedemptionRecord;
 import dao.RegistrationDAO;
 import boundary.BookingUI;
 import boundary.HousekeepingUI;
@@ -35,6 +39,12 @@ public class App {
 
     public static ListInterface<TaskLog> taskLogStack = new DoublyLinkedList<>(); // use for undo stack
     public static ListInterface<TaskLog> cleaningHistoryList = new DoublyLinkedList<>(); // use for cleaning history
+
+    public static ListInterface<RewardItem> rewardCatalog = new DoublyLinkedList<>(); // rewards members can redeem with points
+    public static ListInterface<PointsTransaction> pointsTransactionList = new DoublyLinkedList<>(); // active earned-points batches (for expiry tracking)
+    public static ListInterface<PendingPointsCredit> pendingPointsQueue = new DoublyLinkedList<>(); // points credits awaiting staff processing
+    public static ListInterface<RedemptionRecord> redemptionHistoryList = new DoublyLinkedList<>(); // full reward redemption history
+    public static ListInterface<Integer> queuedStayBookingIDs = new DoublyLinkedList<>(); // booking IDs already queued for points (avoids double-queueing)
 
     // =========================================================
     // Entry point
