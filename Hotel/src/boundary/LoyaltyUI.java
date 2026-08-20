@@ -31,15 +31,6 @@ public class LoyaltyUI {
     public void displayMenu() {
         int choice;
 
-        // sweep for points that have ALREADY expired since the module was
-        // last opened - this actually deducts them from members' balances
-        // (not just a warning), so it must run before anything below reads
-        // member points/tiers or the transaction list
-        String expiredSummary = loyaltyControl.processExpiredPoints();
-        if (!expiredSummary.isEmpty()) {
-            System.out.println("\n" + expiredSummary.trim());
-        }
-
         // one-time notification banner shown when the module is opened
         int expiringCount = loyaltyControl.getExpiringTransactionCount(LoyaltyControl.DEFAULT_EXPIRY_ALERT_DAYS);
         if (expiringCount > 0) {
@@ -156,7 +147,6 @@ public class LoyaltyUI {
     private void viewTransactionsUI() {
         System.out.println("1. Points Expiry Alerts (Next " + LoyaltyControl.DEFAULT_EXPIRY_ALERT_DAYS + " Days)");
         System.out.println("2. View All Points Transactions (Full History)");
-        System.out.println("3. Process Expired Points Now (Manual Trigger)");
         System.out.print("Please select an option: ");
         int option = ValidationUtility.inputChoice(scanner);
 
@@ -166,10 +156,6 @@ public class LoyaltyUI {
                 break;
             case 2:
                 System.out.println(loyaltyControl.generateAllTransactionsReport());
-                break;
-            case 3:
-                String result = loyaltyControl.processExpiredPoints();
-                System.out.println(result.isEmpty() ? "No points have expired yet." : result.trim());
                 break;
             default:
                 System.out.println("Invalid option.");
