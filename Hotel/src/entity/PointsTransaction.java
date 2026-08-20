@@ -4,13 +4,7 @@ import java.time.LocalDate;
 import java.util.concurrent.atomic.AtomicInteger;
 
 /**
- * Entity class representing a single loyalty-points-earning transaction.
- * Each time a member earns points, a separate PointsTransaction is recorded
- * so that different batches of points (earned on different dates) can each
- * expire independently - a single Member.loyaltyPoints total alone cannot
- * represent this, since it does not track *when* each portion was earned.
- *
- * Plain old Java object (POJO) - no input/output statements here.
+ 
  *
  * @author: Kao Yong Feng
  */
