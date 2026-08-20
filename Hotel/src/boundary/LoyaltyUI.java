@@ -121,7 +121,7 @@ public class LoyaltyUI {
                     break;
 
                 case 8:
-                    viewRedemptionHistory();
+                    generateRedemptionHistoryReport();
                     break;
 
                 case 9:
@@ -152,7 +152,7 @@ public class LoyaltyUI {
         System.out.println("5. Points Accumulation Queue");
         System.out.println("6. Generate Loyalty Report");
         System.out.println("7. View Points Transactions");
-        System.out.println("8. View Redemption History");
+        System.out.println("8. Generate Redemption History Report");
         System.out.println("9. Advance Time");
         System.out.println("0. Back to Main Menu");
         System.out.println("===============================================");
@@ -730,9 +730,9 @@ public class LoyaltyUI {
         }
     }
 
-    private void viewRedemptionHistory() {
+    private void generateRedemptionHistoryReport() {
 
-        System.out.println("\n--- View Redemption History ---");
+        System.out.println("\n--- Generate Redemption History Report ---");
 
         ListInterface<RedemptionRecord> list = control.getRedemptionHistory();
 
@@ -776,8 +776,6 @@ public class LoyaltyUI {
         }
     }
 
-    // Horizontal bar chart of each member's spendable points (replaces the
-    // old tier-count chart so the graph reflects individual member points).
     private void printMemberPointsBarChart(ListInterface<Member> list) {
 
         if (list.isEmpty()) {
@@ -803,11 +801,18 @@ public class LoyaltyUI {
         }
 
         final int MAX_BAR_LENGTH = 40;
+        int unitsPerStar = (int) Math.ceil((double) maxPoints / MAX_BAR_LENGTH);
+
+        if (unitsPerStar < 1) {
+            unitsPerStar = 1;
+        }
+
+        System.out.println("(Each * represents approximately " + unitsPerStar + " point(s))\n");
 
         for (int i = 1; i <= list.getNumberOfEntries(); i++) {
 
             Member m = list.getEntry(i);
-            int barLength = (int) ((double) m.getLoyaltyPoints() / maxPoints * MAX_BAR_LENGTH);
+            int barLength = (int) Math.round((double) m.getLoyaltyPoints() / unitsPerStar);
 
             StringBuilder bar = new StringBuilder();
 
@@ -820,7 +825,8 @@ public class LoyaltyUI {
     }
 
     // Horizontal bar chart of how many times each catalog reward has been
-    // redeemed, built directly from the redemption history list.
+    // redeemed, built directly from the redemption history list. Each *
+    // represents a fixed number of redemptions, shown in a legend line.
     private void printRedemptionCountByRewardChart(ListInterface<RedemptionRecord> redemptions) {
 
         ListInterface<RewardItem> catalog = control.getRewardCatalog();
@@ -859,12 +865,19 @@ public class LoyaltyUI {
         }
 
         final int MAX_BAR_LENGTH = 40;
+        int unitsPerStar = (int) Math.ceil((double) maxCount / MAX_BAR_LENGTH);
+
+        if (unitsPerStar < 1) {
+            unitsPerStar = 1;
+        }
+
+        System.out.println("(Each * represents approximately " + unitsPerStar + " redemption(s))\n");
 
         for (int i = 1; i <= catalog.getNumberOfEntries(); i++) {
 
             String rewardName = catalog.getEntry(i).getRewardName();
             int count = redemptionCounts[i];
-            int barLength = (int) ((double) count / maxCount * MAX_BAR_LENGTH);
+            int barLength = (int) Math.round((double) count / unitsPerStar);
 
             StringBuilder bar = new StringBuilder();
 
