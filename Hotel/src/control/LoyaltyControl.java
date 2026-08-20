@@ -434,6 +434,49 @@ public class LoyaltyControl {
     // =========================================================
 
     /**
+     * Sweeps transactionList for any transaction that has ALREADY expired
+     * (expiryDate is today or earlier) and actually enacts the expiry:
+     * deducts those points from the affected member's balance, re-evaluates
+     * their loyalty tier, then removes the now-settled transaction record.
+     *
+     * Without this, getExpiringTransactionCount()/generateExpiryAlertReport()
+     * would only ever warn that points are ABOUT to expire - nothing would
+     * ever actually happen once the expiry date passed. This method is what
+     * makes the expiry real instead of just a countdown.
+     *
+     * Iterates from the last position back to the first so that removing a
+     * transaction mid-sweep never shifts the position of an entry still to
+     * be checked.
+     *
+     * @return a summary line per affected member, or an empty string if
+     *         nothing had expired since the last check
+     */
+    public String processExpiredPoints() {
+        LocalDate today = VirtualClock.getInstance().today();
+        StringBuilder sb = new StringBuilder();
+
+        for (int i = transactionList.getNumberOfEntries(); i >= 1; i--) {
+            PointsTransaction t = transactionList.getEntry(i);
+            if (!t.getExpiryDate().isAfter(today)) { // expiryDate <= today: expired
+                Member member = findMemberByID(t.getMemberID());
+                if (member != null) {
+                    int remaining = Math.max(member.getLoyaltyPoints() - t.getPointsEarned(), 0);
+                    member.setLoyaltyPoints(remaining);
+                    updateTier(member); // re-evaluate tier now that points were removed
+
+                    sb.append("\u26A0 ").append(t.getPointsEarned())
+                      .append(" point(s) expired and were removed from ")
+                      .append(member.getMemberName()).append(" (ID ").append(member.getMemberID())
+                      .append("). New balance: ").append(remaining).append(" points.\n");
+                }
+                transactionList.remove(i);
+            }
+        }
+
+        return sb.toString();
+    }
+
+    /**
      * Returns the number of points transactions expiring within the given
      * number of days from today. Used to show a quick alert banner when the
      * module starts, without needing to build the full report.
