@@ -42,11 +42,7 @@ public class App {
     public static ListInterface<TaskLog> taskLogStack = new DoublyLinkedList<>(); // use for undo stack
     public static ListInterface<TaskLog> cleaningHistoryList = new DoublyLinkedList<>(); // use for cleaning history
 
-    public static ListInterface<RewardItem> rewardCatalog = LoyaltyControl.rewardCatalog; // rewards members can redeem with points
-    public static ListInterface<PointsTransaction> pointsTransactionList = LoyaltyControl.pointsTransactionList; // active earned-points batches (for expiry tracking)
-    public static ListInterface<PendingPointsCredit> pendingPointsQueue = LoyaltyControl.pendingPointsQueue; // points credits awaiting staff processing
-    public static ListInterface<RedemptionRecord> redemptionHistoryList = LoyaltyControl.redemptionHistoryList; // full reward redemption history
-    public static ListInterface<LifetimeEarnedPoints> lifetimeEarnedList = LoyaltyControl.lifetimeEarnedList; // member lifetime earned points
+ 
 
     // =========================================================
     // Entry point
