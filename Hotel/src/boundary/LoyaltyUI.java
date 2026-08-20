@@ -7,6 +7,7 @@ import control.LoyaltyControl;
 import entity.Member;
 import entity.Member.LoyaltyTier;
 import utility.ValidationUtility;
+import utility.VirtualClock;
 
 /**
  
@@ -40,6 +41,12 @@ public class LoyaltyUI {
             System.out.println(newlyQueuedSummary);
         }
 
+        // forfeit any points whose expiryDate has already passed (relative
+        // to the current VirtualClock date) since this module was last
+        // opened - see LoyaltyControl.expireOverduePoints() for why this
+        // is done eagerly instead of only being reported as an alert.
+        checkPointsExpiry();
+
         // one-time notification banners shown when the module is opened
         int expiringCount = loyaltyControl.getExpiringTransactionCount(LoyaltyControl.DEFAULT_EXPIRY_ALERT_DAYS);
         if (expiringCount > 0) {
@@ -57,6 +64,7 @@ public class LoyaltyUI {
         do {
             System.out.println("\n===============================================");
             System.out.println("      LOYALTY & REWARD SERVICE MODULE");
+            System.out.println("  " + VirtualClock.getInstance().toString());
             System.out.println("===============================================");
             System.out.println("(Completed stays are QUEUED for points accumulation");
             System.out.println(" whenever this module is opened - use option 5 to");
@@ -71,7 +79,9 @@ public class LoyaltyUI {
             System.out.println("7. Generate Tier Distribution Report");
             System.out.println("8. View Points Transactions (Alerts / Full History)");
             System.out.println("9. View Redemption History (By Member / Full History)");
-            System.out.println("0. Exit Loyalty Module");
+            System.out.println("10. Exit Loyalty Module");
+            System.out.println("===============================================");
+            System.out.println("0. Advance Time");
             System.out.println("===============================================");
             System.out.print("Please select an option: ");
 
@@ -105,13 +115,31 @@ public class LoyaltyUI {
                 case 9:
                     viewRedemptionsUI();
                     break;
-                case 0:
+                case 10:
                     System.out.println("Exiting Loyalty & Reward Module...");
+                    break;
+                case 0:
+                    TimeProgressionUI.showTimeMenu();
+                    // time may have moved past one or more members' points
+                    // expiryDate - re-check immediately rather than waiting
+                    // for the module to be reopened
+                    checkPointsExpiry();
                     break;
                 default:
                     System.out.println("Invalid option. Please try again.");
             }
-        } while (choice != 0);
+        } while (choice != 10);
+    }
+
+    // scans for and forfeits any overdue points, printing a banner if
+    // anything actually expired. Shared by the module-open check and the
+    // post-Advance-Time check so both paths report expiries the same way.
+    private void checkPointsExpiry() {
+        String expiredSummary = LoyaltyControl.expireOverduePoints();
+        if (!expiredSummary.isEmpty()) {
+            System.out.println("\n--- LOYALTY PROGRAM: POINTS EXPIRED ---");
+            System.out.println(expiredSummary);
+        }
     }
 
     private void redeemRewardUI() {

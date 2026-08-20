@@ -709,6 +709,77 @@ public class LoyaltyControl {
     }
 
     // =========================================================
+    // Use Case 1d: Automatic Points Expiry (Delete - forfeit overdue points)
+    // -----------------------------------------------------------
+    // Previously, an expiring points transaction was only ever REPORTED
+    // (see Use Case 7 below) - nothing ever actually removed the points
+    // from a member's balance once expiryDate had passed, so the alert
+    // was purely cosmetic. Now, every time the Loyalty module is opened
+    // AND every time the VirtualClock is advanced from within this module
+    // (see the "Advance Time" menu option, mirroring the same feature in
+    // the Booking/Registration modules), this scans transactionList for
+    // any record whose expiryDate has already passed and forfeits those
+    // points: they are deducted from the member's balance, the member's
+    // tier is re-evaluated (losing points can demote a member below a
+    // tier threshold), and the now-fully-expired transaction record is
+    // removed from transactionList - there is nothing left on it worth
+    // tracking or alerting on.
+    // =========================================================
+    public static String expireOverduePoints() {
+        ensureSharedDataInitialized();
+        LocalDate today = VirtualClock.getInstance().today();
+        StringBuilder sb = new StringBuilder();
+        int expiredCount = 0;
+
+        // iterate back-to-front so remove(i) never disturbs the position
+        // of entries not yet visited
+        for (int i = transactionList.getNumberOfEntries(); i >= 1; i--) {
+            PointsTransaction t = transactionList.getEntry(i);
+            if (!today.isAfter(t.getExpiryDate())) {
+                continue; // today == expiryDate is still the last valid day, not expired yet
+            }
+
+            Member member = findMemberByIDStatic(t.getMemberID());
+            if (member != null && t.getPointsEarned() > 0) {
+                int forfeited = Math.min(t.getPointsEarned(), member.getLoyaltyPoints());
+                member.setLoyaltyPoints(member.getLoyaltyPoints() - forfeited);
+                String tierMessage = updateTier(member);
+
+                sb.append(member.getMemberName()).append(" (ID ").append(member.getMemberID())
+                  .append(") - ").append(forfeited).append(" point(s) EXPIRED on ")
+                  .append(t.getExpiryDate()).append(" and have been forfeited. New balance: ")
+                  .append(member.getLoyaltyPoints()).append(" points.\n");
+                if (!tierMessage.isEmpty()) {
+                    sb.append(tierMessage).append("\n");
+                }
+            }
+
+            transactionList.remove(i);
+            expiredCount++;
+        }
+
+        if (expiredCount == 0) {
+            return "";
+        }
+        sb.append("\n").append(expiredCount)
+          .append(" points transaction(s) expired and were forfeited.");
+        return sb.toString();
+    }
+
+    // static linear-search lookup by member ID, used by expireOverduePoints()
+    // since that method runs independently of any particular LoyaltyControl
+    // instance (same reasoning as the other static queue/scan methods above)
+    private static Member findMemberByIDStatic(int memberID) {
+        for (int i = 1; i <= App.memberList.getNumberOfEntries(); i++) {
+            Member m = App.memberList.getEntry(i);
+            if (m.getMemberID() == memberID) {
+                return m;
+            }
+        }
+        return null;
+    }
+
+    // =========================================================
     // Use Case 7: Points Expiry Notifications / Alert
     // =========================================================
 
