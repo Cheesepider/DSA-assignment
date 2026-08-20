@@ -9,6 +9,7 @@ import dao.RegistrationDAO;
 import adt.DoublyLinkedList;
 import adt.ListInterface;
 import entity.Booking;
+import entity.LifetimeEarnedPoints;
 import entity.Member;
 import entity.Member.LoyaltyTier;
 import entity.PendingPointsCredit;
@@ -30,37 +31,8 @@ public class LoyaltyControl {
 
     private ListInterface<Member> memberList;
 
-    
-    private static class LifetimeEarnedPoints {
-        private int memberID;
-        private int totalEarned;
-
-    
-        LifetimeEarnedPoints() {
-        }
-
-        LifetimeEarnedPoints(int memberID, int totalEarned) {
-            this.memberID = memberID;
-            this.totalEarned = totalEarned;
-        }
-
-        @Override
-        public boolean equals(Object obj) {
-            if (this == obj) {
-                return true;
-            }
-            if (!(obj instanceof LifetimeEarnedPoints)) {
-                return false;
-            }
-            return this.memberID == ((LifetimeEarnedPoints) obj).memberID;
-        }
-
-        @Override
-        public int hashCode() {
-            return Integer.hashCode(memberID);
-        }
-    }
-
+    // Tracks each member's cumulative lifetime-earned points (never
+    // decreases, unlike Member.loyaltyPoints). See entity.LifetimeEarnedPoints.
     private static ListInterface<LifetimeEarnedPoints> lifetimeEarnedList;
 
     private static LoyaltyDAO loyaltyDAO = new LoyaltyDAO();
@@ -125,13 +97,13 @@ public class LoyaltyControl {
    
     private static int findLifetimeEarnedPosition(int memberID) {
         LifetimeEarnedPoints probe = new LifetimeEarnedPoints();
-        probe.memberID = memberID;
+        probe.setMemberID(memberID);
         return lifetimeEarnedList.indexOf(probe);
     }
 
     private static int getLifetimeEarned(int memberID) {
         int position = findLifetimeEarnedPosition(memberID);
-        return position == -1 ? 0 : lifetimeEarnedList.getEntry(position).totalEarned;
+        return position == -1 ? 0 : lifetimeEarnedList.getEntry(position).getTotalEarned();
     }
 
   
@@ -145,7 +117,7 @@ public class LoyaltyControl {
         if (position == -1) {
             lifetimeEarnedList.add(new LifetimeEarnedPoints(memberID, pointsToAdd));
         } else {
-            lifetimeEarnedList.getEntry(position).totalEarned += pointsToAdd;
+            lifetimeEarnedList.getEntry(position).addTotalEarned(pointsToAdd);
         }
     }
 
