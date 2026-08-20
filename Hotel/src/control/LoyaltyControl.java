@@ -50,16 +50,6 @@ public class LoyaltyControl {
     public static final int DEFAULT_EXPIRY_ALERT_DAYS = 30;
     public static final double DOLLARS_PER_POINT = 1.0;
 
-    public static final int SORT_BY_POINTS = 1;
-    public static final int SORT_BY_NAME = 2;
-    public static final int SORT_BY_TIER = 3;
-    public static final int SORT_BY_MEMBER_ID = 4;
-
-    public static final int REDEMPTION_SORT_BY_DATE = 1;
-    public static final int REDEMPTION_SORT_BY_POINTS = 2;
-    public static final int REDEMPTION_SORT_BY_MEMBER_NAME = 3;
-    public static final int REDEMPTION_SORT_BY_REWARD_NAME = 4;
-
     public static final int REDEEM_SUCCESS = 0;
     public static final int REDEEM_MEMBER_NOT_FOUND = 1;
     public static final int REDEEM_REWARD_NOT_FOUND = 2;
@@ -492,69 +482,6 @@ public class LoyaltyControl {
         return redemptionHistoryList;
     }
 
-    public ListInterface<RedemptionRecord> getFilteredAndSortedRedemptions(String searchKeyword, int sortOption) {
-
-        ListInterface<RedemptionRecord> filtered = new DoublyLinkedList<>();
-
-        if (searchKeyword == null || searchKeyword.trim().isEmpty()) {
-
-            for (int i = 1; i <= redemptionHistoryList.getNumberOfEntries(); i++) {
-                filtered.add(redemptionHistoryList.getEntry(i));
-            }
-
-        } else {
-
-            String keyword = searchKeyword.trim();
-
-            try {
-                int memberID = Integer.parseInt(keyword);
-
-                for (int i = 1; i <= redemptionHistoryList.getNumberOfEntries(); i++) {
-
-                    RedemptionRecord r = redemptionHistoryList.getEntry(i);
-
-                    if (r.getMemberID() == memberID) {
-                        filtered.add(r);
-                    }
-                }
-
-            } catch (NumberFormatException e) {
-
-                for (int i = 1; i <= redemptionHistoryList.getNumberOfEntries(); i++) {
-
-                    RedemptionRecord r = redemptionHistoryList.getEntry(i);
-
-                    if (r.getMemberName().toLowerCase().contains(keyword.toLowerCase())
-                            || r.getRewardName().toLowerCase().contains(keyword.toLowerCase())) {
-                        filtered.add(r);
-                    }
-                }
-            }
-        }
-
-        switch (sortOption) {
-
-            case REDEMPTION_SORT_BY_POINTS:
-                bubbleSortRedemptionsByPointsDescending(filtered);
-                break;
-
-            case REDEMPTION_SORT_BY_MEMBER_NAME:
-                insertionSortRedemptionsByMemberName(filtered);
-                break;
-
-            case REDEMPTION_SORT_BY_REWARD_NAME:
-                insertionSortRedemptionsByRewardName(filtered);
-                break;
-
-            case REDEMPTION_SORT_BY_DATE:
-            default:
-                insertionSortRedemptionsByDateDescending(filtered);
-                break;
-        }
-
-        return filtered;
-    }
-
     // Reward Catalog Management
     public ListInterface<RewardItem> getRewardCatalog() {
         return rewardCatalog;
@@ -674,90 +601,6 @@ public class LoyaltyControl {
         return results;
     }
 
-    public ListInterface<Member> getFilteredAndSortedMembers(String searchKeyword, int sortOption) {
-
-        ListInterface<Member> filtered = new DoublyLinkedList<>();
-
-        if (searchKeyword == null || searchKeyword.trim().isEmpty()) {
-
-            for (int i = 1; i <= App.memberList.getNumberOfEntries(); i++) {
-                filtered.add(App.memberList.getEntry(i));
-            }
-
-        } else {
-
-            String keyword = searchKeyword.trim();
-
-            try {
-                int memberID = Integer.parseInt(keyword);
-                Member match = findMemberByID(memberID);
-
-                if (match != null) {
-                    filtered.add(match);
-                }
-
-                return filtered;
-
-            } catch (NumberFormatException e) {
-                // Not numeric, proceed to tier and name match
-            }
-
-            boolean tierMatched = false;
-
-            for (LoyaltyTier tier : LoyaltyTier.values()) {
-
-                if (tier.name().equalsIgnoreCase(keyword)) {
-
-                    for (int i = 1; i <= App.memberList.getNumberOfEntries(); i++) {
-
-                        Member m = App.memberList.getEntry(i);
-
-                        if (m.getLoyaltyTier() == tier) {
-                            filtered.add(m);
-                        }
-                    }
-
-                    tierMatched = true;
-                    break;
-                }
-            }
-
-            if (!tierMatched) {
-
-                for (int i = 1; i <= App.memberList.getNumberOfEntries(); i++) {
-
-                    Member m = App.memberList.getEntry(i);
-
-                    if (m.getMemberName().toLowerCase().contains(keyword.toLowerCase())) {
-                        filtered.add(m);
-                    }
-                }
-            }
-        }
-
-        switch (sortOption) {
-
-            case SORT_BY_NAME:
-                insertionSortByNameAscending(filtered);
-                break;
-
-            case SORT_BY_TIER:
-                selectionSortByTierThenPointsDescending(filtered);
-                break;
-
-            case SORT_BY_MEMBER_ID:
-                selectionSortByID(filtered);
-                break;
-
-            case SORT_BY_POINTS:
-            default:
-                bubbleSortByPointsDescending(filtered);
-                break;
-        }
-
-        return filtered;
-    }
-
     // Sorting Algorithms
     public void selectionSortByID(ListInterface<Member> list) {
 
@@ -780,67 +623,6 @@ public class LoyaltyControl {
         }
     }
 
-    public void bubbleSortByPointsDescending(ListInterface<Member> list) {
-
-        int n = list.getNumberOfEntries();
-
-        for (int i = 1; i <= n - 1; i++) {
-
-            for (int j = 1; j <= n - i; j++) {
-
-                if (list.getEntry(j).getLoyaltyPoints() < list.getEntry(j + 1).getLoyaltyPoints()) {
-                    list.swap(j, j + 1);
-                }
-            }
-        }
-    }
-
-    public void insertionSortByNameAscending(ListInterface<Member> list) {
-
-        int n = list.getNumberOfEntries();
-
-        for (int i = 2; i <= n; i++) {
-
-            int j = i;
-
-            while (j > 1 && list.getEntry(j).getMemberName()
-                    .compareToIgnoreCase(list.getEntry(j - 1).getMemberName()) < 0) {
-
-                list.swap(j, j - 1);
-                j--;
-            }
-        }
-    }
-
-    public void selectionSortByTierThenPointsDescending(ListInterface<Member> list) {
-
-        int n = list.getNumberOfEntries();
-
-        for (int i = 1; i <= n - 1; i++) {
-
-            int bestPos = i;
-
-            for (int j = i + 1; j <= n; j++) {
-
-                Member candidate = list.getEntry(j);
-                Member best = list.getEntry(bestPos);
-
-                boolean candidateBetter
-                        = candidate.getLoyaltyTier().ordinal() != best.getLoyaltyTier().ordinal()
-                        ? candidate.getLoyaltyTier().ordinal() > best.getLoyaltyTier().ordinal()
-                        : candidate.getLoyaltyPoints() > best.getLoyaltyPoints();
-
-                if (candidateBetter) {
-                    bestPos = j;
-                }
-            }
-
-            if (bestPos != i) {
-                list.swap(i, bestPos);
-            }
-        }
-    }
-
     public void insertionSortByExpiryDate(ListInterface<PointsTransaction> list) {
 
         int n = list.getNumberOfEntries();
@@ -851,72 +633,6 @@ public class LoyaltyControl {
 
             while (j > 1 && list.getEntry(j).getExpiryDate()
                     .isBefore(list.getEntry(j - 1).getExpiryDate())) {
-
-                list.swap(j, j - 1);
-                j--;
-            }
-        }
-    }
-
-    public void insertionSortRedemptionsByDateDescending(ListInterface<RedemptionRecord> list) {
-
-        int n = list.getNumberOfEntries();
-
-        for (int i = 2; i <= n; i++) {
-
-            int j = i;
-
-            while (j > 1 && list.getEntry(j).getRedeemedDate()
-                    .isAfter(list.getEntry(j - 1).getRedeemedDate())) {
-
-                list.swap(j, j - 1);
-                j--;
-            }
-        }
-    }
-
-    public void bubbleSortRedemptionsByPointsDescending(ListInterface<RedemptionRecord> list) {
-
-        int n = list.getNumberOfEntries();
-
-        for (int i = 1; i <= n - 1; i++) {
-
-            for (int j = 1; j <= n - i; j++) {
-
-                if (list.getEntry(j).getPointsUsed() < list.getEntry(j + 1).getPointsUsed()) {
-                    list.swap(j, j + 1);
-                }
-            }
-        }
-    }
-
-    public void insertionSortRedemptionsByMemberName(ListInterface<RedemptionRecord> list) {
-
-        int n = list.getNumberOfEntries();
-
-        for (int i = 2; i <= n; i++) {
-
-            int j = i;
-
-            while (j > 1 && list.getEntry(j).getMemberName()
-                    .compareToIgnoreCase(list.getEntry(j - 1).getMemberName()) < 0) {
-
-                list.swap(j, j - 1);
-                j--;
-            }
-        }
-    }
-
-    public void insertionSortRedemptionsByRewardName(ListInterface<RedemptionRecord> list) {
-
-        int n = list.getNumberOfEntries();
-
-        for (int i = 2; i <= n; i++) {
-
-            int j = i;
-
-            while (j > 1 && list.getEntry(j).getRewardName()
-                    .compareToIgnoreCase(list.getEntry(j - 1).getRewardName()) < 0) {
 
                 list.swap(j, j - 1);
                 j--;
