@@ -208,22 +208,18 @@ public class LoyaltyUI {
             case 1:
                 System.out.print("Enter reward name: ");
                 String name = scanner.nextLine();
-                System.out.print("Enter description: ");
-                String description = scanner.nextLine();
                 System.out.print("Enter points required: ");
                 int points = ValidationUtility.inputChoice(scanner);
-                System.out.println(loyaltyControl.addRewardItem(name, description, points));
+                System.out.println(loyaltyControl.addRewardItem(name, "", points));
                 break;
             case 2:
                 System.out.print("Enter Reward ID to update: ");
                 int updateID = ValidationUtility.inputChoice(scanner);
                 System.out.print("Enter new reward name: ");
                 String newName = scanner.nextLine();
-                System.out.print("Enter new description: ");
-                String newDescription = scanner.nextLine();
                 System.out.print("Enter new points required: ");
                 int newPoints = ValidationUtility.inputChoice(scanner);
-                System.out.println(loyaltyControl.updateRewardItem(updateID, newName, newDescription, newPoints));
+                System.out.println(loyaltyControl.updateRewardItem(updateID, newName, newPoints));
                 break;
             case 3:
                 System.out.print("Enter Reward ID to delete: ");

@@ -635,7 +635,7 @@ public class LoyaltyControl {
     }
 
     // ---- Update ----
-    public String updateRewardItem(int rewardID, String newName, String newDescription, int newPointsRequired) {
+    public String updateRewardItem(int rewardID, String newName, int newPointsRequired) {
         int position = findRewardPosition(rewardID);
         if (position == -1) {
             return "Reward with ID " + rewardID + " not found in catalog.";
@@ -649,7 +649,6 @@ public class LoyaltyControl {
         // as earnPoints()/redeemReward() mutating Member directly)
         RewardItem existingReward = rewardCatalog.getEntry(position);
         existingReward.setRewardName(newName);
-        existingReward.setDescription(newDescription);
         existingReward.setPointsRequired(newPointsRequired);
         return "Reward ID " + rewardID + " updated successfully.";
     }
