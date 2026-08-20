@@ -5,7 +5,7 @@
 package boundary;
 
 /**
- *
+ **
  * @author Kao Yong Feng
  */
 import adt.DoublyLinkedList;

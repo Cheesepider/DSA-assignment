@@ -29,9 +29,9 @@ import utility.VirtualClock;
 
 public class LoyaltyControl {
 
-    // =========================================================
+    // ==========================================================
     // Loyalty & Reward Module Collection ADTs
-    // =========================================================
+    // ==========================================================
     public static ListInterface<RewardItem> rewardCatalog = new DoublyLinkedList<>();
     public static ListInterface<PointsTransaction> pointsTransactionList = new DoublyLinkedList<>();
     public static ListInterface<PendingPointsCredit> pendingPointsQueue = new DoublyLinkedList<>();

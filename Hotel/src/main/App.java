@@ -26,9 +26,9 @@ import utility.VirtualClock;
 
 public class App {
 
-    // =========================================================
+    // ==========================================================
     // Global application state — shared across all modules
-    // =========================================================
+    // ==========================================================
     public static ListInterface<Member> memberList = new DoublyLinkedList<>(); // all registered members
     public static ListInterface<Room> roomList = new DoublyLinkedList<>(); // all hotel rooms
 
