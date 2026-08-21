@@ -304,7 +304,7 @@ public class PriorityAllocationUI {
         System.out.println("4. Regular");
         System.out.println("5. All");
 
-        System.out.print("Enter choice: ");
+        System.out.print("Enter choice(0 to return): ");
         int tierChoice = ValidationUtility.inputChoice(scanner);
 
         Member.LoyaltyTier selectedTier = null;
@@ -325,6 +325,8 @@ public class PriorityAllocationUI {
             case 5:
                 selectedTier = null; // All
                 break;
+            case 0:
+                return;
             default:
                 System.out.println("Invalid choice.");
                 return;
@@ -337,7 +339,7 @@ public class PriorityAllocationUI {
         System.out.println("3. Suite");
         System.out.println("4. All");
 
-        System.out.print("Enter choice: ");
+        System.out.print("Enter choice(0 to return): ");
         int roomChoice = ValidationUtility.inputChoice(scanner);
 
         Room.RoomType selectedRoomType = null;
@@ -355,6 +357,8 @@ public class PriorityAllocationUI {
             case 4:
                 selectedRoomType = null; // All
                 break;
+            case 0:
+                return;
             default:
                 System.out.println("Invalid choice.");
                 return;
@@ -367,7 +371,7 @@ public class PriorityAllocationUI {
         System.out.println("3. Custom Date");
         System.out.println("4. All Dates");
 
-        System.out.print("Enter choice: ");
+        System.out.print("Enter choice(0 to return): ");
         int dateChoice = ValidationUtility.inputChoice(scanner);
 
         LocalDate selectedDate = null;
@@ -376,21 +380,20 @@ public class PriorityAllocationUI {
             case 1:
                 selectedDate = LocalDate.now();
                 break;
-
             case 2:
                 selectedDate = LocalDate.now().plusDays(1);
                 break;
-
             case 3:
                 selectedDate = ValidationUtility.inputDate(
                         scanner,
                         "Enter Check-In Date (yyyy-MM-dd): ");
                 break;
-
             case 4:
                 selectedDate = null;
-                break;
-
+                break;          
+            case 0:
+                return;
+            
             default:
                 System.out.println("Invalid choice.");
                 return;
