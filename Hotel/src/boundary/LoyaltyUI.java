@@ -799,10 +799,7 @@ public class LoyaltyUI {
         printVerticalBarChart("MEMBER SPENDABLE POINTS", labels, values, "point(s)", "Members");
     }
 
-    // Vertical bar chart of how many times each catalog reward has been
-    // redeemed. Only rewards that have actually been redeemed at least
-    // once are charted, and only the top 10 by redemption count are shown,
-    // so the chart stays a readable width regardless of catalog size.
+   
     private void printRedemptionCountByRewardChart(ListInterface<RedemptionRecord> redemptions) {
 
         ListInterface<RewardItem> catalog = control.getRewardCatalog();
@@ -846,11 +843,7 @@ public class LoyaltyUI {
         printVerticalBarChart("REWARD REDEMPTION COUNT", labels, values, "redemption(s)", "Rewards");
     }
 
-    // Shared vertical bar chart renderer used by both report graphs.
-    // Draws a Y-axis scale on the left, solid bars for each item, and
-    // truncated labels along the X-axis. If more than 10 items are
-    // passed in, only the top 10 by value are shown (sorted descending
-    // with a simple selection sort) so the chart stays a readable width.
+    
     private void printVerticalBarChart(String title, String[] labels, int[] values, String unitName, String xAxisLabel) {
 
         if (values.length == 0) {
