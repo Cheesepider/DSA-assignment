@@ -40,8 +40,8 @@ public class RegistrationUI {
             System.out.println("6. View check-out waitlist");
             System.out.println("7. Walk-In Booking");
             System.out.println("==========================================");
-            System.out.println("8. Generate Booking Summary & Trend Report"); // bookings in time frame
-            System.out.println("9. Generate Revenue Summary & Trend Report"); // revenue report of set timeframe
+            System.out.println("8. Generate Member Booking & Spending Summary Report"); // member -> booking -> room
+            System.out.println("9. Generate Room Type Performance & Revenue Summary Report"); // room -> booking -> member
             System.out.println("10. Exit Registration Module");
             System.out.println("==========================================");
             System.out.println("0. Advance Time");
@@ -79,10 +79,10 @@ public class RegistrationUI {
                     walkInProcess(scanner);
                     break;
                 case 8:
-                    generateBookingReportUI(scanner);
+                    generateMemberBookingReportUI(scanner);
                     break;
                 case 9:
-                    generateRevenueReportUI(scanner);
+                    generateRoomTypePerformanceReportUI(scanner);
                     break;
                 case 10:
                     System.out.println("Exiting Registration Module...");
@@ -240,10 +240,9 @@ public class RegistrationUI {
         }
     }
 
-    private void generateBookingReportUI(Scanner scanner) {
-        System.out.println("\n--- Booking Report Parameters ---");
+    private void generateMemberBookingReportUI(Scanner scanner) {
+        System.out.println("\n--- Member Booking & Spending Summary Report Parameters ---");
         int year = VirtualClock.getInstance().today().getYear();
-        int month = VirtualClock.getInstance().today().getMonthValue();
 
         System.out.print("Enter Year (YYYY) or press Enter for current year [" + year + "]: ");
         String yearStr = scanner.nextLine().trim();
@@ -254,40 +253,29 @@ public class RegistrationUI {
             }
         }
 
-        System.out.print("Enter Month (1-12) or press Enter for current month [" + month + "]: ");
-        String monthStr = scanner.nextLine().trim();
-        if (!monthStr.isEmpty()) {
-            try {
-                month = Integer.parseInt(monthStr);
-            } catch (Exception ignored) {
+        System.out.println("Select Timeframe / Quarter:");
+        System.out.println("1. Q1 (Jan - Mar)");
+        System.out.println("2. Q2 (Apr - Jun)");
+        System.out.println("3. Q3 (Jul - Sep)");
+        System.out.println("4. Q4 (Oct - Dec)");
+        System.out.println("0. Full Year (All Quarters)");
+        System.out.print("Choice: ");
+        int quarter = 0;
+        try {
+            quarter = Integer.parseInt(scanner.nextLine().trim());
+            if (quarter < 0 || quarter > 4) {
+                quarter = 0;
             }
+        } catch (Exception ignored) {
+            quarter = 0;
         }
 
-        System.out.println("Select Booking Status Filter:");
-        System.out.println("1. CONFIRMED");
-        System.out.println("2. CHECKED IN");
-        System.out.println("3. CHECKED OUT");
-        System.out.println("4. CANCELLED");
-        System.out.println("0. All Statuses");
-        System.out.print("Choice: ");
-        String statusChoice = scanner.nextLine().trim();
-        entity.Booking.BookingStatus sFilter = null;
-        if (statusChoice.equals("1"))
-            sFilter = entity.Booking.BookingStatus.CONFIRMED;
-        else if (statusChoice.equals("2"))
-            sFilter = entity.Booking.BookingStatus.CHECKED_IN;
-        else if (statusChoice.equals("3"))
-            sFilter = entity.Booking.BookingStatus.CHECKED_OUT;
-        else if (statusChoice.equals("4"))
-            sFilter = entity.Booking.BookingStatus.CANCELLED;
-
-        RegistrationControl.generateBookingSummaryReport(year, month, sFilter);
+        RegistrationControl.generateMemberBookingSummaryReport(year, quarter);
     }
 
-    private void generateRevenueReportUI(Scanner scanner) {
-        System.out.println("\n--- Revenue Report Parameters ---");
+    private void generateRoomTypePerformanceReportUI(Scanner scanner) {
+        System.out.println("\n--- Room Type Performance & Revenue Summary Report Parameters ---");
         int year = VirtualClock.getInstance().today().getYear();
-        int month = VirtualClock.getInstance().today().getMonthValue();
 
         System.out.print("Enter Year (YYYY) or press Enter for current year [" + year + "]: ");
         String yearStr = scanner.nextLine().trim();
@@ -298,30 +286,23 @@ public class RegistrationUI {
             }
         }
 
-        System.out.print("Enter Month (1-12) or press Enter for current month [" + month + "]: ");
-        String monthStr = scanner.nextLine().trim();
-        if (!monthStr.isEmpty()) {
-            try {
-                month = Integer.parseInt(monthStr);
-            } catch (Exception ignored) {
+        System.out.println("Select Timeframe / Quarter:");
+        System.out.println("1. Q1 (Jan - Mar)");
+        System.out.println("2. Q2 (Apr - Jun)");
+        System.out.println("3. Q3 (Jul - Sep)");
+        System.out.println("4. Q4 (Oct - Dec)");
+        System.out.println("0. Full Year (All Quarters)");
+        System.out.print("Choice: ");
+        int quarter = 0;
+        try {
+            quarter = Integer.parseInt(scanner.nextLine().trim());
+            if (quarter < 0 || quarter > 4) {
+                quarter = 0;
             }
+        } catch (Exception ignored) {
+            quarter = 0;
         }
 
-        System.out.println("Select Room Type Filter:");
-        System.out.println("1. SINGLE");
-        System.out.println("2. DOUBLE");
-        System.out.println("3. SUITE");
-        System.out.println("0. All Types");
-        System.out.print("Choice: ");
-        String typeChoice = scanner.nextLine().trim();
-        entity.Room.RoomType tFilter = null;
-        if (typeChoice.equals("1"))
-            tFilter = entity.Room.RoomType.SINGLE;
-        else if (typeChoice.equals("2"))
-            tFilter = entity.Room.RoomType.DOUBLE;
-        else if (typeChoice.equals("3"))
-            tFilter = entity.Room.RoomType.SUITE;
-
-        RegistrationControl.generateRevenueSummaryReport(year, month, tFilter);
+        RegistrationControl.generateRoomTypePerformanceReport(year, quarter);
     }
 }

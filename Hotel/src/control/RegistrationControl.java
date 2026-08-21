@@ -11,6 +11,7 @@ package control;
 import java.util.Objects;
 import utility.VirtualClock;
 import adt.ListInterface;
+import adt.DoublyLinkedList;
 import entity.Member;
 import entity.Booking;
 import entity.Room;
@@ -436,150 +437,444 @@ public class RegistrationControl {
         }
     }
 
-    public static void generateBookingSummaryReport(int year, int month, Booking.BookingStatus statusFilter) {
-        System.out.println("\n=======================================================");
-        System.out.println("         BOOKING SUMMARY & TREND REPORT                ");
-        System.out.printf("               Period: %04d-%02d\n", year, month);
-        System.out.println("=======================================================");
+    // =========================================================================
+    // SUMMARY REPORT 1: Member Booking & Spending Summary Report
+    // Demonstrates 3-Class Dependency: Member -> Booking -> Room
+    // =========================================================================
+    public static void generateMemberBookingSummaryReport(int year, int quarter) {
+        String periodTitle = (quarter >= 1 && quarter <= 4) ? (year + " - Q" + quarter + " (" + getQuarterMonths(quarter) + ")") : (year + " - Full Year");
 
-        int[] dailyCounts = new int[32];
-        int totalBookings = 0;
-        int confirmed = 0, checkedIn = 0, checkedOut = 0, cancelled = 0;
+        System.out.println("\n========================================================================================================================");
+        System.out.println("                                Tunku Abdul Rahman University of Management & Technology");
+        System.out.println("                                                        (TARUMT)");
+        System.out.println("                                                RESORT MANAGEMENT SYSTEM");
+        System.out.println("                                         HOTEL REGISTRATION & BOOKING SUBSYSTEM");
+        System.out.println("========================================================================================================================");
+        System.out.println("Report Title : MEMBER BOOKING ACTIVITY & REVENUE CONTRIBUTION SUMMARY REPORT");
+        System.out.println("Generated At : " + VirtualClock.getInstance().toString());
+        System.out.println("Period       : " + periodTitle);
+        System.out.println("========================================================================================================================");
 
-        // Process active
-        for (int i = 1; i <= App.bookingList.getNumberOfEntries(); i++) {
-            Booking b = App.bookingList.getEntry(i);
-            LocalDate date = b.getCheckInDate();
+        if (App.memberList == null || App.memberList.isEmpty()) {
+            System.out.println("No registered members found in the system.");
+            return;
+        }
 
-            if (date.getYear() == year && date.getMonthValue() == month) {
-                if (statusFilter == null || b.getBookingStatus() == statusFilter) {
-                    dailyCounts[date.getDayOfMonth()]++;
-                    totalBookings++;
+        ListInterface<MemberSummaryEntry> entryList = new DoublyLinkedList<>();
 
-                    if (b.getBookingStatus() == Booking.BookingStatus.CONFIRMED) {
-                        confirmed++;
-                    } else if (b.getBookingStatus() == Booking.BookingStatus.CHECKED_IN) {
-                        checkedIn++;
+        int totalSystemBookings = 0;
+        int totalSystemCompleted = 0;
+        int totalSystemCancelled = 0;
+        long totalSystemNights = 0;
+        double totalSystemRevenue = 0.0;
+
+        for (int i = 1; i <= App.memberList.getNumberOfEntries(); i++) {
+            Member m = App.memberList.getEntry(i);
+            MemberSummaryEntry entry = new MemberSummaryEntry(m);
+
+            // Scan Active Bookings
+            if (App.bookingList != null) {
+                for (int j = 1; j <= App.bookingList.getNumberOfEntries(); j++) {
+                    Booking b = App.bookingList.getEntry(j);
+                    if (b.getMember() != null && b.getMember().getMemberID() == m.getMemberID() && isDateInPeriod(b.getCheckInDate(), year, quarter)) {
+                        entry.totalBookings++;
+                        entry.activeBookings++;
+                        Room r = b.getRoom();
+                        long nights = calculateNights(b.getCheckInDate(), b.getCheckOutDate());
+                        entry.totalNights += nights;
+                        double rate = (r != null && r.getRoomType() != null) ? r.getRoomType().getBaseRate() : 0.0;
+                        entry.totalRevenue += (nights * rate);
+                        if (r != null && r.getRoomType() != null) {
+                            entry.recordRoomType(r.getRoomType());
+                        }
                     }
                 }
             }
-        }
 
-        // Process history
-        for (int i = 1; i <= App.bookingHistoryList.getNumberOfEntries(); i++) {
-            Booking b = App.bookingHistoryList.getEntry(i);
-            LocalDate date = b.getCheckInDate();
-
-            if (date.getYear() == year && date.getMonthValue() == month) {
-                if (statusFilter == null || b.getBookingStatus() == statusFilter) {
-                    dailyCounts[date.getDayOfMonth()]++;
-                    totalBookings++;
-
-                    if (b.getBookingStatus() == Booking.BookingStatus.CHECKED_OUT) {
-                        checkedOut++;
-                    } else if (b.getBookingStatus() == Booking.BookingStatus.CANCELLED) {
-                        cancelled++;
+            // Scan Historical Bookings
+            if (App.bookingHistoryList != null) {
+                for (int j = 1; j <= App.bookingHistoryList.getNumberOfEntries(); j++) {
+                    Booking b = App.bookingHistoryList.getEntry(j);
+                    if (b.getMember() != null && b.getMember().getMemberID() == m.getMemberID() && isDateInPeriod(b.getCheckInDate(), year, quarter)) {
+                        entry.totalBookings++;
+                        Room r = b.getRoom();
+                        if (b.getBookingStatus() == Booking.BookingStatus.CANCELLED) {
+                            entry.cancelledBookings++;
+                        } else {
+                            entry.completedStays++;
+                            long nights = calculateNights(b.getCheckInDate(), b.getCheckOutDate());
+                            entry.totalNights += nights;
+                            double rate = (r != null && r.getRoomType() != null) ? r.getRoomType().getBaseRate() : 0.0;
+                            long overstay = (b.getBookingDate() != null && b.getCheckOutDate() != null)
+                                    ? java.time.temporal.ChronoUnit.DAYS.between(b.getCheckOutDate(), b.getBookingDate())
+                                    : 0;
+                            double revenue = (nights * rate);
+                            if (overstay > 0) {
+                                revenue += (overstay * rate * 1.5);
+                            }
+                            entry.totalRevenue += revenue;
+                        }
+                        if (r != null && r.getRoomType() != null) {
+                            entry.recordRoomType(r.getRoomType());
+                        }
                     }
                 }
             }
+
+            totalSystemBookings += entry.totalBookings;
+            totalSystemCompleted += entry.completedStays;
+            totalSystemCancelled += entry.cancelledBookings;
+            totalSystemNights += entry.totalNights;
+            totalSystemRevenue += entry.totalRevenue;
+
+            entryList.add(entry);
         }
 
-        System.out.println("\n--- BOOKING STATUS SUMMARY ---");
-        System.out.println("Confirmed Bookings (Active): " + confirmed);
-        System.out.println("Checked-In Bookings (Active): " + checkedIn);
-        System.out.println("Checked-Out Bookings (Completed): " + checkedOut);
-        System.out.println("Cancelled Bookings: " + cancelled);
-        System.out.println("Total Bookings in Period: " + totalBookings);
-
-        System.out.println("\n--- DAILY BOOKING VOLUME TREND ---");
-        for (int day = 1; day <= 31; day++) {
-            if (dailyCounts[day] > 0 || (day <= LocalDate.of(year, month, 1).lengthOfMonth() && totalBookings > 0)) {
-                System.out.printf("Day %02d | %2d | ", day, dailyCounts[day]);
-                for (int star = 0; star < dailyCounts[day]; star++) {
-                    System.out.print("■ ");
+        // Sort members descending by totalRevenue, then totalBookings
+        for (int i = 1; i <= entryList.getNumberOfEntries(); i++) {
+            for (int j = i + 1; j <= entryList.getNumberOfEntries(); j++) {
+                MemberSummaryEntry a = entryList.getEntry(i);
+                MemberSummaryEntry b = entryList.getEntry(j);
+                if (b.totalRevenue > a.totalRevenue || (b.totalRevenue == a.totalRevenue && b.totalBookings > a.totalBookings)) {
+                    entryList.replace(i, b);
+                    entryList.replace(j, a);
                 }
-                System.out.println();
             }
         }
-        System.out.println("-------------------------------------------------------");
+
+        System.out.printf("%-5s | %-9s | %-18s | %-10s | %-8s | %-9s | %-9s | %-7s | %-10s | %-12s | %-10s\n",
+                "Rank", "Member ID", "Member Name", "Tier", "Bookings", "Completed", "Cancelled", "Nights", "Pref. Room", "Revenue ($)", "Contr. Tier");
+        System.out.println("------------------------------------------------------------------------------------------------------------------------");
+
+        for (int i = 1; i <= entryList.getNumberOfEntries(); i++) {
+            MemberSummaryEntry e = entryList.getEntry(i);
+            String contrTier = getContributionTier(e.totalRevenue);
+            System.out.printf("%-5d | %-9d | %-18s | %-10s | %-8d | %-9d | %-9d | %-7d | %-10s | $%11.2f | %-10s\n",
+                    i,
+                    e.member.getMemberID(),
+                    truncate(e.member.getMemberName(), 18),
+                    e.member.getLoyaltyTier(),
+                    e.totalBookings,
+                    e.completedStays,
+                    e.cancelledBookings,
+                    e.totalNights,
+                    e.getPreferredRoomType(),
+                    e.totalRevenue,
+                    contrTier);
+        }
+
+        System.out.println("========================================================================================================================");
+        System.out.println("SUMMARY INSIGHTS & AGGREGATE METRICS:");
+        System.out.printf("• Total Registered Members Analyzed : %d\n", entryList.getNumberOfEntries());
+        System.out.printf("• Total Bookings Placed in Period   : %d (Completed: %d, Active: %d, Cancelled: %d)\n",
+                totalSystemBookings, totalSystemCompleted, (totalSystemBookings - totalSystemCompleted - totalSystemCancelled), totalSystemCancelled);
+        System.out.printf("• Overall Cancellation Rate         : %.2f%%\n",
+                totalSystemBookings > 0 ? ((double) totalSystemCancelled / totalSystemBookings * 100.0) : 0.0);
+        System.out.printf("• Total Guest Nights Stayed         : %d nights\n", totalSystemNights);
+        System.out.printf("• Total Room Revenue Generated      : $%.2f\n", totalSystemRevenue);
+        System.out.printf("• Average Revenue Per Member        : $%.2f\n",
+                !entryList.isEmpty() ? (totalSystemRevenue / entryList.getNumberOfEntries()) : 0.0);
+        if (!entryList.isEmpty() && entryList.getEntry(1).totalRevenue > 0) {
+            MemberSummaryEntry top = entryList.getEntry(1);
+            System.out.printf("• Top Contributor (VIP Guest)       : %s (ID: %d, Tier: %s) with $%.2f spent (%d bookings)\n",
+                    top.member.getMemberName(), top.member.getMemberID(), top.member.getLoyaltyTier(), top.totalRevenue, top.totalBookings);
+        }
+        System.out.println("------------------------------------------------------------------------------------------------------------------------");
+        System.out.println("Contribution Tier Guide: [HIGH] Revenue >= $500 | [MEDIUM] $100 - $499 | [LOW] $1 - $99 | [INACTIVE] $0");
         System.out.println("End of Report.");
     }
 
-    public static void generateRevenueSummaryReport(int year, int month, Room.RoomType typeFilter) {
-        System.out.println("\n=======================================================");
-        System.out.println("         REVENUE SUMMARY & TREND REPORT                ");
-        System.out.printf("               Period: %04d-%02d\n", year, month);
-        System.out.println("=======================================================");
+    // =========================================================================
+    // SUMMARY REPORT 2: Room Type Performance & Member Tier Utilization Report
+    // Demonstrates 3-Class Dependency: Room -> Booking -> Member
+    // =========================================================================
+    public static void generateRoomTypePerformanceReport(int year, int quarter) {
+        String periodTitle = (quarter >= 1 && quarter <= 4) ? (year + " - Q" + quarter + " (" + getQuarterMonths(quarter) + ")") : (year + " - Full Year");
 
-        double[] dailyRevenue = new double[32];
-        double totalNormal = 0, totalPenalty = 0;
+        System.out.println("\n========================================================================================================================");
+        System.out.println("                                Tunku Abdul Rahman University of Management & Technology");
+        System.out.println("                                                        (TARUMT)");
+        System.out.println("                                                RESORT MANAGEMENT SYSTEM");
+        System.out.println("                                         HOTEL REGISTRATION & BOOKING SUBSYSTEM");
+        System.out.println("========================================================================================================================");
+        System.out.println("Report Title : ROOM TYPE PERFORMANCE & MEMBER TIER UTILIZATION SUMMARY REPORT");
+        System.out.println("Generated At : " + VirtualClock.getInstance().toString());
+        System.out.println("Period       : " + periodTitle);
+        System.out.println("========================================================================================================================");
 
-        for (int i = 1; i <= App.bookingHistoryList.getNumberOfEntries(); i++) {
-            Booking b = App.bookingHistoryList.getEntry(i);
+        RoomTypeSummaryEntry singleEntry = new RoomTypeSummaryEntry(Room.RoomType.SINGLE);
+        RoomTypeSummaryEntry doubleEntry = new RoomTypeSummaryEntry(Room.RoomType.DOUBLE);
+        RoomTypeSummaryEntry suiteEntry = new RoomTypeSummaryEntry(Room.RoomType.SUITE);
 
-            // Assuming revenue is realized on checkout date (bookingDate in history)
-            LocalDate date = b.getBookingDate();
+        ListInterface<RoomTypeSummaryEntry> entryList = new DoublyLinkedList<>();
+        entryList.add(singleEntry);
+        entryList.add(doubleEntry);
+        entryList.add(suiteEntry);
 
-            if (b.getBookingStatus() == Booking.BookingStatus.CHECKED_OUT
-                    && date != null && date.getYear() == year && date.getMonthValue() == month) {
-
-                Room room = b.getRoom();
-                if (typeFilter != null && (room == null || room.getRoomType() != typeFilter)) {
-                    continue;
-                }
-
-                double rate = (room != null) ? room.getRoomType().getBaseRate() : 0.0;
-
-                LocalDate checkIn = b.getCheckInDate();
-                LocalDate scheduledCheckOut = b.getCheckOutDate();
-
-                long scheduledNights = java.time.temporal.ChronoUnit.DAYS.between(checkIn, scheduledCheckOut);
-                if (scheduledNights <= 0) {
-                    scheduledNights = 1;
-                }
-
-                long overstayDays = java.time.temporal.ChronoUnit.DAYS.between(scheduledCheckOut, date);
-                double revenueForBooking = 0;
-
-                if (overstayDays > 0) {
-                    double normal = (scheduledNights * rate);
-                    double penalty = (overstayDays * rate * 1.5);
-                    totalNormal += normal;
-                    totalPenalty += penalty;
-                    revenueForBooking = normal + penalty;
-                } else {
-                    long actualNights = java.time.temporal.ChronoUnit.DAYS.between(checkIn, date);
-                    if (actualNights <= 0) {
-                        actualNights = 1;
+        // Process Active Bookings
+        if (App.bookingList != null) {
+            for (int i = 1; i <= App.bookingList.getNumberOfEntries(); i++) {
+                Booking b = App.bookingList.getEntry(i);
+                if (b.getRoom() != null && b.getRoom().getRoomType() != null && isDateInPeriod(b.getCheckInDate(), year, quarter)) {
+                    RoomTypeSummaryEntry target = getRoomTypeEntry(entryList, b.getRoom().getRoomType());
+                    if (target != null) {
+                        target.totalBookings++;
+                        target.activeBookings++;
+                        long nights = calculateNights(b.getCheckInDate(), b.getCheckOutDate());
+                        target.totalNights += nights;
+                        target.totalRevenue += (nights * b.getRoom().getRoomType().getBaseRate());
+                        if (b.getMember() != null) {
+                            target.recordMemberTier(b.getMember().getLoyaltyTier());
+                        }
                     }
-                    double normal = (actualNights * rate);
-                    totalNormal += normal;
-                    revenueForBooking = normal;
                 }
-
-                dailyRevenue[date.getDayOfMonth()] += revenueForBooking;
             }
         }
 
-        System.out.println("\n--- REVENUE SUMMARY ---");
-        System.out.printf("Normal Room Revenue: $%.2f\n", totalNormal);
-        System.out.printf("Overstay Penalty Revenue: $%.2f\n", totalPenalty);
-        System.out.printf("Total Revenue: $%.2f\n", (totalNormal + totalPenalty));
-
-        System.out.println("\n--- DAILY REVENUE TREND ---");
-        for (int day = 1; day <= 31; day++) {
-            if (dailyRevenue[day] > 0 || (day <= LocalDate.of(year, month, 1).lengthOfMonth() && (totalNormal + totalPenalty) > 0)) {
-                System.out.printf("Day %02d | $%7.2f | ", day, dailyRevenue[day]);
-                // Scale the graph so it doesn't get ridiculously long. e.g., 1 block = $100
-                int blocks = (int) (dailyRevenue[day] / 100.0);
-                for (int star = 0; star < blocks; star++) {
-                    System.out.print("■ ");
+        // Process Historical Bookings
+        if (App.bookingHistoryList != null) {
+            for (int i = 1; i <= App.bookingHistoryList.getNumberOfEntries(); i++) {
+                Booking b = App.bookingHistoryList.getEntry(i);
+                if (b.getRoom() != null && b.getRoom().getRoomType() != null && isDateInPeriod(b.getCheckInDate(), year, quarter)) {
+                    RoomTypeSummaryEntry target = getRoomTypeEntry(entryList, b.getRoom().getRoomType());
+                    if (target != null) {
+                        target.totalBookings++;
+                        if (b.getBookingStatus() == Booking.BookingStatus.CANCELLED) {
+                            target.cancelledBookings++;
+                        } else {
+                            target.completedBookings++;
+                            long nights = calculateNights(b.getCheckInDate(), b.getCheckOutDate());
+                            target.totalNights += nights;
+                            double rate = b.getRoom().getRoomType().getBaseRate();
+                            long overstay = (b.getBookingDate() != null && b.getCheckOutDate() != null)
+                                    ? java.time.temporal.ChronoUnit.DAYS.between(b.getCheckOutDate(), b.getBookingDate())
+                                    : 0;
+                            double revenue = (nights * rate);
+                            if (overstay > 0) {
+                                revenue += (overstay * rate * 1.5);
+                            }
+                            target.totalRevenue += revenue;
+                        }
+                        if (b.getMember() != null) {
+                            target.recordMemberTier(b.getMember().getLoyaltyTier());
+                        }
+                    }
                 }
-                System.out.println();
             }
         }
-        System.out.println("-------------------------------------------------------");
+
+        // Sort by totalRevenue descending
+        for (int i = 1; i <= entryList.getNumberOfEntries(); i++) {
+            for (int j = i + 1; j <= entryList.getNumberOfEntries(); j++) {
+                RoomTypeSummaryEntry a = entryList.getEntry(i);
+                RoomTypeSummaryEntry b = entryList.getEntry(j);
+                if (b.totalRevenue > a.totalRevenue || (b.totalRevenue == a.totalRevenue && b.totalNights > a.totalNights)) {
+                    entryList.replace(i, b);
+                    entryList.replace(j, a);
+                }
+            }
+        }
+
+        System.out.println("SECTION 1: ROOM TYPE REVENUE & OCCUPANCY PERFORMANCE RANKING");
+        System.out.printf("%-5s | %-12s | %-10s | %-10s | %-9s | %-9s | %-12s | %-14s | %-11s | %-11s\n",
+                "Rank", "Room Type", "Base Rate", "Bookings", "Completed", "Cancelled", "Nights Booked", "Revenue ($)", "Avg Stay (N)", "Cancel %");
+        System.out.println("------------------------------------------------------------------------------------------------------------------------");
+
+        int totalAllBookings = 0;
+        long totalAllNights = 0;
+        double totalAllRevenue = 0.0;
+
+        for (int i = 1; i <= entryList.getNumberOfEntries(); i++) {
+            RoomTypeSummaryEntry e = entryList.getEntry(i);
+            totalAllBookings += e.totalBookings;
+            totalAllNights += e.totalNights;
+            totalAllRevenue += e.totalRevenue;
+
+            System.out.printf("%-5d | %-12s | $%-9.2f | %-10d | %-9d | %-9d | %-12d | $%13.2f | %-11.1f | %9.1f%%\n",
+                    i,
+                    e.roomType,
+                    e.roomType.getBaseRate(),
+                    e.totalBookings,
+                    e.completedBookings,
+                    e.cancelledBookings,
+                    e.totalNights,
+                    e.totalRevenue,
+                    e.getAverageStayNights(),
+                    e.getCancellationRate());
+        }
+
+        System.out.println("------------------------------------------------------------------------------------------------------------------------");
+        System.out.printf("TOTAL | %-12s | %-10s | %-10d | %-9s | %-9s | %-12d | $%13.2f |\n",
+                "ALL TYPES", "-", totalAllBookings, "-", "-", totalAllNights, totalAllRevenue);
+
+        System.out.println("\nSECTION 2: MEMBER DEMOGRAPHIC UTILIZATION BY LOYALTY TIER");
+        System.out.printf("%-12s | %-14s | %-14s | %-14s | %-14s | %-20s\n",
+                "Room Type", "Regular Guests", "Platinum Guests", "Diamond Guests", "Elite Guests", "Dominant Demographic");
+        System.out.println("------------------------------------------------------------------------------------------------------------------------");
+
+        for (int i = 1; i <= entryList.getNumberOfEntries(); i++) {
+            RoomTypeSummaryEntry e = entryList.getEntry(i);
+            System.out.printf("%-12s | %-14s | %-14s | %-14s | %-14s | %-20s\n",
+                    e.roomType,
+                    e.regularBookings + " (" + formatPct(e.regularBookings, e.totalBookings) + ")",
+                    e.platinumBookings + " (" + formatPct(e.platinumBookings, e.totalBookings) + ")",
+                    e.diamondBookings + " (" + formatPct(e.diamondBookings, e.totalBookings) + ")",
+                    e.eliteBookings + " (" + formatPct(e.eliteBookings, e.totalBookings) + ")",
+                    e.getDominantDemographic());
+        }
+
+        System.out.println("========================================================================================================================");
+        System.out.println("SUMMARY INSIGHTS & STRATEGIC RECOMMENDATIONS:");
+        if (!entryList.isEmpty() && entryList.getEntry(1).totalRevenue > 0) {
+            RoomTypeSummaryEntry top = entryList.getEntry(1);
+            System.out.printf("• Top Revenue Driver Room Category  : %s with $%.2f (%.1f%% of overall revenue)\n",
+                    top.roomType, top.totalRevenue, totalAllRevenue > 0 ? (top.totalRevenue / totalAllRevenue * 100.0) : 0.0);
+        }
+        System.out.printf("• Highest Volume Demand Category    : %s\n", getHighestVolumeType(entryList));
+        System.out.printf("• Overall Average Booking Length     : %.2f nights\n",
+                (totalAllBookings > 0) ? ((double) totalAllNights / totalAllBookings) : 0.0);
+        System.out.println("------------------------------------------------------------------------------------------------------------------------");
         System.out.println("End of Report.");
+    }
+
+    // Helper classes and methods for report generation
+    private static class MemberSummaryEntry {
+        Member member;
+        int totalBookings = 0;
+        int completedStays = 0;
+        int cancelledBookings = 0;
+        int activeBookings = 0;
+        long totalNights = 0;
+        double totalRevenue = 0.0;
+        int singleCount = 0;
+        int doubleCount = 0;
+        int suiteCount = 0;
+
+        MemberSummaryEntry(Member member) {
+            this.member = member;
+        }
+
+        void recordRoomType(Room.RoomType type) {
+            if (type == Room.RoomType.SINGLE) singleCount++;
+            else if (type == Room.RoomType.DOUBLE) doubleCount++;
+            else if (type == Room.RoomType.SUITE) suiteCount++;
+        }
+
+        String getPreferredRoomType() {
+            if (singleCount == 0 && doubleCount == 0 && suiteCount == 0) return "-";
+            if (singleCount >= doubleCount && singleCount >= suiteCount) return "SINGLE";
+            if (doubleCount >= singleCount && doubleCount >= suiteCount) return "DOUBLE";
+            return "SUITE";
+        }
+    }
+
+    private static class RoomTypeSummaryEntry {
+        Room.RoomType roomType;
+        int totalBookings = 0;
+        int completedBookings = 0;
+        int cancelledBookings = 0;
+        int activeBookings = 0;
+        long totalNights = 0;
+        double totalRevenue = 0.0;
+        int regularBookings = 0;
+        int platinumBookings = 0;
+        int diamondBookings = 0;
+        int eliteBookings = 0;
+
+        RoomTypeSummaryEntry(Room.RoomType roomType) {
+            this.roomType = roomType;
+        }
+
+        void recordMemberTier(Member.LoyaltyTier tier) {
+            if (tier == Member.LoyaltyTier.Regular) regularBookings++;
+            else if (tier == Member.LoyaltyTier.Platinum) platinumBookings++;
+            else if (tier == Member.LoyaltyTier.Diamond) diamondBookings++;
+            else if (tier == Member.LoyaltyTier.Elite) eliteBookings++;
+        }
+
+        double getAverageStayNights() {
+            int stays = completedBookings + activeBookings;
+            return stays > 0 ? (double) totalNights / stays : 0.0;
+        }
+
+        double getCancellationRate() {
+            return totalBookings > 0 ? ((double) cancelledBookings / totalBookings * 100.0) : 0.0;
+        }
+
+        String getDominantDemographic() {
+            if (totalBookings == 0) return "-";
+            int max = regularBookings;
+            String dominant = "Regular";
+            if (platinumBookings > max) { max = platinumBookings; dominant = "Platinum"; }
+            if (diamondBookings > max) { max = diamondBookings; dominant = "Diamond"; }
+            if (eliteBookings > max) { max = eliteBookings; dominant = "Elite"; }
+            return dominant;
+        }
+    }
+
+    private static boolean isDateInPeriod(LocalDate date, int year, int quarter) {
+        if (date == null) return false;
+        if (date.getYear() != year) return false;
+        if (quarter == 0) return true; // Full Year
+        int m = date.getMonthValue();
+        if (quarter == 1) return m >= 1 && m <= 3;
+        if (quarter == 2) return m >= 4 && m <= 6;
+        if (quarter == 3) return m >= 7 && m <= 9;
+        if (quarter == 4) return m >= 10 && m <= 12;
+        return false;
+    }
+
+    private static String getQuarterMonths(int quarter) {
+        switch (quarter) {
+            case 1: return "Jan - Mar";
+            case 2: return "Apr - Jun";
+            case 3: return "Jul - Sep";
+            case 4: return "Oct - Dec";
+            default: return "Full Year";
+        }
+    }
+
+    private static long calculateNights(LocalDate in, LocalDate out) {
+        if (in == null || out == null) return 1;
+        long n = java.time.temporal.ChronoUnit.DAYS.between(in, out);
+        return n <= 0 ? 1 : n;
+    }
+
+    private static String getContributionTier(double revenue) {
+        if (revenue >= 500.0) return "HIGH";
+        if (revenue >= 100.0) return "MEDIUM";
+        if (revenue > 0) return "LOW";
+        return "INACTIVE";
+    }
+
+    private static String truncate(String s, int max) {
+        if (s == null) return "-";
+        return s.length() <= max ? s : s.substring(0, max - 3) + "...";
+    }
+
+    private static String formatPct(int count, int total) {
+        if (total == 0) return "0.0%";
+        return String.format("%.1f%%", (double) count / total * 100.0);
+    }
+
+    private static RoomTypeSummaryEntry getRoomTypeEntry(ListInterface<RoomTypeSummaryEntry> list, Room.RoomType type) {
+        for (int i = 1; i <= list.getNumberOfEntries(); i++) {
+            if (list.getEntry(i).roomType == type) {
+                return list.getEntry(i);
+            }
+        }
+        return null;
+    }
+
+    private static String getHighestVolumeType(ListInterface<RoomTypeSummaryEntry> list) {
+        RoomTypeSummaryEntry best = null;
+        for (int i = 1; i <= list.getNumberOfEntries(); i++) {
+            RoomTypeSummaryEntry e = list.getEntry(i);
+            if (best == null || e.totalBookings > best.totalBookings) {
+                best = e;
+            }
+        }
+        return (best != null && best.totalBookings > 0) ? (best.roomType + " (" + best.totalBookings + " bookings)") : "N/A";
     }
 
     private static void simulateEnqueue(ListInterface<Member> waitlist, Member member) {
