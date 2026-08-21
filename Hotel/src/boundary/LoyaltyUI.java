@@ -783,11 +783,29 @@ public class LoyaltyUI {
 
         if (list.isEmpty()) {
             System.out.println("No redemption records found.");
+            return;
+        }
+
+        System.out.println("\nSelect Graph to Display:");
+        System.out.println("1. Top 3 Rewards");
+        System.out.println("2. Top 10 Rewards");
+        System.out.println("3. Back (Skip Graph)");
+        System.out.print("Enter choice (default 1): ");
+
+        String graphChoice = scanner.nextLine().trim();
+
+        if (graphChoice.equals("2")) {
+            printRedemptionCountByRewardChart(list, 10);
+        } else if (graphChoice.equals("3")) {
+            // Back - skip the graph
         } else {
-            printRedemptionCountByRewardChart(list);
+            printRedemptionCountByRewardChart(list, 3);
         }
     }
 
+    // Horizontal bar chart of each member's spendable points. Same overall
+    // style as before (legend line, top-10-by-value sorting) but drawn as
+    // rows instead of columns so full member names are never cut off.
     private void printMemberPointsBarChart(ListInterface<Member> list) {
 
         if (list.isEmpty()) {
@@ -805,10 +823,12 @@ public class LoyaltyUI {
             values[i - 1] = m.getLoyaltyPoints();
         }
 
-        printHorizontalBarChart("MEMBER SPENDABLE POINTS", labels, values, "point(s)", "Spendable Points");
+        printHorizontalBarChart("MEMBER SPENDABLE POINTS", labels, values, "point(s)", "Spendable Points", 10);
     }
 
-  
+    // Horizontal bar chart of each member's lifetime earned points (the
+    // total that determines their loyalty tier, as opposed to their
+    // current spendable balance).
     private void printMemberLifetimeEarnedBarChart(ListInterface<Member> list) {
 
         if (list.isEmpty()) {
@@ -826,10 +846,13 @@ public class LoyaltyUI {
             values[i - 1] = control.getLifetimeEarnedPoints(m.getMemberID());
         }
 
-        printHorizontalBarChart("MEMBER LIFETIME EARNED POINTS", labels, values, "point(s)", "Lifetime Earned Points");
+        printHorizontalBarChart("MEMBER LIFETIME EARNED POINTS", labels, values, "point(s)", "Lifetime Earned Points", 10);
     }
 
-    private void printRedemptionCountByRewardChart(ListInterface<RedemptionRecord> redemptions) {
+    // Horizontal bar chart of how many times each catalog reward has been
+    // redeemed. Only rewards that have actually been redeemed at least
+    // once are charted, and only the top 10 by redemption count are shown.
+    private void printRedemptionCountByRewardChart(ListInterface<RedemptionRecord> redemptions, int topN) {
 
         ListInterface<RewardItem> catalog = control.getRewardCatalog();
 
@@ -869,11 +892,17 @@ public class LoyaltyUI {
             values[i] = allCounts[i];
         }
 
-        printHorizontalBarChart("REWARD REDEMPTION COUNT", labels, values, "redemption(s)", "Redemption Count");
+        printHorizontalBarChart("REWARD REDEMPTION COUNT", labels, values, "redemption(s)", "Redemption Count", topN);
     }
 
-    
-    private void printHorizontalBarChart(String title, String[] labels, int[] values, String unitName, String xAxisLabel) {
+    // Shared horizontal bar chart renderer used by both report graphs.
+    // Each row shows the full label (never truncated), its value, and a
+    // proportional bar of asterisks with a legend explaining the scale.
+    // An X-axis line runs underneath the bars, labeled with what the bar
+    // length represents (e.g. "Redemption Count"). Only the top maxRows
+    // items by value are shown (sorted descending with a simple
+    // selection sort).
+    private void printHorizontalBarChart(String title, String[] labels, int[] values, String unitName, String xAxisLabel, int maxRows) {
 
         if (values.length == 0) {
             return;
@@ -908,8 +937,7 @@ public class LoyaltyUI {
             }
         }
 
-        final int MAX_ROWS = 10;
-        int rowCount = Math.min(n, MAX_ROWS);
+        int rowCount = Math.min(n, maxRows);
 
         int maxValue = sortedValues[0];
 
@@ -969,8 +997,8 @@ public class LoyaltyUI {
 
         System.out.println(axisPrefix + "+" + axisDashes + "> " + xAxisLabel);
 
-        if (n > MAX_ROWS) {
-            System.out.println("\n(Showing top " + MAX_ROWS + " of " + n + " by value)");
+        if (n > maxRows) {
+            System.out.println("\n(Showing top " + maxRows + " of " + n + " by value)");
         }
     }
 
