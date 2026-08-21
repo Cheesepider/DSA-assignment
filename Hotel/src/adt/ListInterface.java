@@ -16,7 +16,7 @@ public interface ListInterface<T> {
 
     T remove(int position);
 
-    T getEntry(int position);
+    T   getEntry(int position);
 
     boolean replace(int position, T newEntry);
 
