@@ -98,32 +98,50 @@ public class RegistrationUI {
     }
 
     private Member registerNewCustomer(Scanner scanner) {
-        String name;
-        while (true) {
-            System.out.print("Enter customer name: ");
-            name = scanner.nextLine().trim();
-            if (!name.isEmpty()) {
-                break;
-            }
+        System.out.print("Enter customer name (or type 'cancel' to abort): ");
+        String name = scanner.nextLine().trim();
+        if (name.equalsIgnoreCase("cancel")) {
+            System.out.println("Registration aborted. Returning to menu.");
+            return null;
+        }
+        while (name.isEmpty()) {
             System.out.println("Name cannot be empty. Please try again.");
-        }
-        String phoneNumber;
-        while (true) {
-            System.out.print("Enter customer phone number: ");
-            phoneNumber = scanner.nextLine().trim();
-            if (phoneNumber.matches("\\d{7,15}")) {
-                break;
+            System.out.print("Enter customer name (or type 'cancel' to abort): ");
+            name = scanner.nextLine().trim();
+            if (name.equalsIgnoreCase("cancel")) {
+                System.out.println("Registration aborted. Returning to menu.");
+                return null;
             }
+        }
+        System.out.print("Enter customer phone number (or type 'cancel' to abort): ");
+        String phoneNumber = scanner.nextLine().trim();
+        if (phoneNumber.equalsIgnoreCase("cancel")) {
+            System.out.println("Registration aborted. Returning to menu.");
+            return null;
+        }
+        while (!phoneNumber.matches("\\d{7,15}")) {
             System.out.println("Phone number must be 7-15 digits. Please try again.");
-        }
-        String email;
-        while (true) {
-            System.out.print("Enter customer email: ");
-            email = scanner.nextLine().trim();
-            if (email.matches("^\\S+@\\S+\\.\\S+$")) {
-                break;
+            System.out.print("Enter customer phone number (or type 'cancel' to abort): ");
+            phoneNumber = scanner.nextLine().trim();
+            if (phoneNumber.equalsIgnoreCase("cancel")) {
+                System.out.println("Registration aborted. Returning to menu.");
+                return null;
             }
+        }
+        System.out.print("Enter customer email (or type 'cancel' to abort): ");
+        String email = scanner.nextLine().trim();
+        if (email.equalsIgnoreCase("cancel")) {
+            System.out.println("Registration aborted. Returning to menu.");
+            return null;
+        }
+        while (!email.matches("^\\S+@\\S+\\.\\S+$")) {
             System.out.println("Invalid email format. Please try again.");
+            System.out.print("Enter customer email (or type 'cancel' to abort): ");
+            email = scanner.nextLine().trim();
+            if (email.equalsIgnoreCase("cancel")) {
+                System.out.println("Registration aborted. Returning to menu.");
+                return null;
+            }
         }
         return RegistrationControl.registerNewCustomer(name, phoneNumber, email);
     }
@@ -136,11 +154,16 @@ public class RegistrationUI {
             System.out.print("Customer not found. Would you like to register a new customer? (Y/N): ");
             String registerChoice = scanner.nextLine().trim();
             if (registerChoice.equalsIgnoreCase("y")) {
-                member = registerNewCustomer(scanner);
-            } else {
-                System.out.println("Walk-in booking cancelled.");
+            member = registerNewCustomer(scanner);
+            if (member == null) {
+                // Registration was aborted
+                System.out.println("Returning to menu.");
                 return;
             }
+        } else {
+            System.out.println("Walk-in booking cancelled.");
+            return;
+        }
         }
         System.out.println("Proceeding to make booking for " + member.getMemberName() + "...");
         BookingControl.makeBooking(member);

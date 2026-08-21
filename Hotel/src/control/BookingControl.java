@@ -103,8 +103,12 @@ public class BookingControl {
 
         // 1. Get dates
         while (checkInDate == null) {
-            System.out.print("Enter Check-In Date (YYYY-MM-DD): ");
+            System.out.print("Enter Check-In Date (YYYY-MM-DD) or type 'cancel' to abort: ");
             String input = scanner.nextLine().trim();
+            if (input.equalsIgnoreCase("cancel")) {
+                System.out.println("Booking aborted. Returning to menu.");
+                return;
+            }
             try {
                 checkInDate = LocalDate.parse(input);
                 if (checkInDate.isBefore(VirtualClock.getInstance().today())) {
@@ -117,8 +121,12 @@ public class BookingControl {
         }
 
         while (checkOutDate == null) {
-            System.out.print("Enter Check-Out Date (YYYY-MM-DD): ");
+            System.out.print("Enter Check-Out Date (YYYY-MM-DD) or type 'cancel' to abort: ");
             String input = scanner.nextLine().trim();
+            if (input.equalsIgnoreCase("cancel")) {
+                System.out.println("Booking aborted. Returning to menu.");
+                return;
+            }
             try {
                 checkOutDate = LocalDate.parse(input);
                 if (!checkOutDate.isAfter(checkInDate)) {
@@ -138,7 +146,12 @@ public class BookingControl {
             System.out.println("2. Double (Rate: $150.0/night)");
             System.out.println("3. Suite (Rate: $300.0/night)");
             System.out.print("Choice: ");
+            System.out.print("Choice (or type 'cancel' to abort): ");
             String choice = scanner.nextLine().trim();
+            if (choice.equalsIgnoreCase("cancel")) {
+                System.out.println("Booking aborted. Returning to menu.");
+                return;
+            }
             if (choice.equals("1")) selectedType = RoomType.SINGLE;
             else if (choice.equals("2")) selectedType = RoomType.DOUBLE;
             else if (choice.equals("3")) selectedType = RoomType.SUITE;
