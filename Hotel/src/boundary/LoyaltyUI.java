@@ -8,9 +8,9 @@ package boundary;
  **
  * @author Kao Yong Feng
  */
-import adt.DoublyLinkedList;
 import adt.ListInterface;
 import control.LoyaltyControl;
+import entity.ChartEntry;
 import entity.Member;
 import entity.Member.LoyaltyTier;
 import entity.PendingPointsCredit;
@@ -810,18 +810,10 @@ public class LoyaltyUI {
             return;
         }
 
-        int n = list.getNumberOfEntries();
-        String[] labels = new String[n];
-        int[] values = new int[n];
+        
+        ListInterface<ChartEntry> chartData = control.getMemberPointsChartData(list);
 
-        for (int i = 1; i <= n; i++) {
-
-            Member m = list.getEntry(i);
-            labels[i - 1] = m.getMemberName();
-            values[i - 1] = m.getLoyaltyPoints();
-        }
-
-        printHorizontalBarChart("MEMBER SPENDABLE POINTS", labels, values, "point(s)", "Spendable Points", 10);
+        printHorizontalBarChart("MEMBER SPENDABLE POINTS", chartData, "point(s)", "Spendable Points", 10);
     }
 
     
@@ -831,102 +823,37 @@ public class LoyaltyUI {
             return;
         }
 
-        int n = list.getNumberOfEntries();
-        String[] labels = new String[n];
-        int[] values = new int[n];
+        ListInterface<ChartEntry> chartData = control.getMemberLifetimeEarnedChartData(list);
 
-        for (int i = 1; i <= n; i++) {
-
-            Member m = list.getEntry(i);
-            labels[i - 1] = m.getMemberName();
-            values[i - 1] = control.getLifetimeEarnedPoints(m.getMemberID());
-        }
-
-        printHorizontalBarChart("MEMBER LIFETIME EARNED POINTS", labels, values, "point(s)", "Lifetime Earned Points", 10);
+        printHorizontalBarChart("MEMBER LIFETIME EARNED POINTS", chartData, "point(s)", "Lifetime Earned Points", 10);
     }
 
     
     private void printRedemptionCountByRewardChart(ListInterface<RedemptionRecord> redemptions, int topN) {
 
-        ListInterface<RewardItem> catalog = control.getRewardCatalog();
-
-        if (catalog.isEmpty() || redemptions.isEmpty()) {
+        if (redemptions.isEmpty()) {
             return;
         }
 
-        int catalogSize = catalog.getNumberOfEntries();
-        String[] allLabels = new String[catalogSize];
-        int[] allCounts = new int[catalogSize];
-        int redeemedRewardCount = 0;
+        
+        ListInterface<ChartEntry> chartData = control.getRedemptionCountByRewardChartData(redemptions);
 
-        for (int i = 1; i <= catalogSize; i++) {
-
-            String rewardName = catalog.getEntry(i).getRewardName();
-            int count = 0;
-
-            for (int j = 1; j <= redemptions.getNumberOfEntries(); j++) {
-
-                if (redemptions.getEntry(j).getRewardName().equalsIgnoreCase(rewardName)) {
-                    count++;
-                }
-            }
-
-            if (count > 0) {
-                allLabels[redeemedRewardCount] = rewardName;
-                allCounts[redeemedRewardCount] = count;
-                redeemedRewardCount++;
-            }
-        }
-
-        String[] labels = new String[redeemedRewardCount];
-        int[] values = new int[redeemedRewardCount];
-
-        for (int i = 0; i < redeemedRewardCount; i++) {
-            labels[i] = allLabels[i];
-            values[i] = allCounts[i];
-        }
-
-        printHorizontalBarChart("REWARD REDEMPTION COUNT", labels, values, "redemption(s)", "Redemption Count", topN);
+        printHorizontalBarChart("REWARD REDEMPTION COUNT", chartData, "redemption(s)", "Redemption Count", topN);
     }
 
     
-    private void printHorizontalBarChart(String title, String[] labels, int[] values, String unitName, String xAxisLabel, int maxRows) {
+    
+    private void printHorizontalBarChart(String title, ListInterface<ChartEntry> data, String unitName, String xAxisLabel, int maxRows) {
 
-        if (values.length == 0) {
+        int n = data.getNumberOfEntries();
+
+        if (n == 0) {
             return;
-        }
-
-        String[] sortedLabels = labels.clone();
-        int[] sortedValues = values.clone();
-
-        int n = sortedValues.length;
-
-        for (int i = 0; i < n - 1; i++) {
-
-            int maxPos = i;
-
-            for (int j = i + 1; j < n; j++) {
-
-                if (sortedValues[j] > sortedValues[maxPos]) {
-                    maxPos = j;
-                }
-            }
-
-            if (maxPos != i) {
-
-                int tempValue = sortedValues[i];
-                sortedValues[i] = sortedValues[maxPos];
-                sortedValues[maxPos] = tempValue;
-
-                String tempLabel = sortedLabels[i];
-                sortedLabels[i] = sortedLabels[maxPos];
-                sortedLabels[maxPos] = tempLabel;
-            }
         }
 
         int rowCount = Math.min(n, maxRows);
 
-        int maxValue = sortedValues[0];
+        int maxValue = data.getEntry(1).getValue();
 
         System.out.println("\n" + title + "\n");
 
@@ -946,16 +873,17 @@ public class LoyaltyUI {
 
         int labelWidth = 10;
 
-        for (int i = 0; i < rowCount; i++) {
+        for (int i = 1; i <= rowCount; i++) {
 
-            if (sortedLabels[i].length() > labelWidth) {
-                labelWidth = sortedLabels[i].length();
+            if (data.getEntry(i).getLabel().length() > labelWidth) {
+                labelWidth = data.getEntry(i).getLabel().length();
             }
         }
 
-        for (int i = 0; i < rowCount; i++) {
+        for (int i = 1; i <= rowCount; i++) {
 
-            int barLength = (int) Math.round((double) sortedValues[i] / unitsPerStar);
+            ChartEntry entry = data.getEntry(i);
+            int barLength = (int) Math.round((double) entry.getValue() / unitsPerStar);
 
             StringBuilder bar = new StringBuilder();
 
@@ -963,7 +891,7 @@ public class LoyaltyUI {
                 bar.append('*');
             }
 
-            System.out.printf("%-" + labelWidth + "s | %6d | %s%n", sortedLabels[i], sortedValues[i], bar.toString());
+            System.out.printf("%-" + labelWidth + "s | %6d | %s%n", entry.getLabel(), entry.getValue(), bar.toString());
         }
 
         

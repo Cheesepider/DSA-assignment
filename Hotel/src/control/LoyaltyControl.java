@@ -13,6 +13,7 @@ import adt.ListInterface;
 import dao.LoyaltyDAO;
 import dao.RegistrationDAO;
 import entity.Booking;
+import entity.ChartEntry;
 import entity.LifetimeEarnedPoints;
 import entity.Member;
 import entity.Member.LoyaltyTier;
@@ -708,5 +709,99 @@ public class LoyaltyControl {
         }
 
         return count;
+    }
+
+    // ==========================================================
+    // Report Chart Data (Business Logic: build, filter/aggregate, sort)
+    // ==========================================================
+    // These methods build the label/value data used by the UI's bar-chart
+    // display, using the team's collection ADT (ListInterface) instead of
+    // raw arrays, and return the data already sorted (descending by value).
+    // The boundary layer (LoyaltyUI) only renders this pre-built, pre-sorted
+    // ADT data; it does not perform any sorting or filtering itself.
+
+    // Sorts a ChartEntry list in descending order of value using selection
+    // sort, operating entirely through the ADT's getEntry()/swap() methods.
+    public void selectionSortChartEntriesDescending(ListInterface<ChartEntry> list) {
+
+        int n = list.getNumberOfEntries();
+
+        for (int i = 1; i <= n - 1; i++) {
+
+            int maxPos = i;
+
+            for (int j = i + 1; j <= n; j++) {
+
+                if (list.getEntry(j).getValue() > list.getEntry(maxPos).getValue()) {
+                    maxPos = j;
+                }
+            }
+
+            if (maxPos != i) {
+                list.swap(i, maxPos);
+            }
+        }
+    }
+
+    // Builds chart data for "Member Spendable Points", sorted descending.
+    public ListInterface<ChartEntry> getMemberPointsChartData(ListInterface<Member> memberList) {
+
+        ListInterface<ChartEntry> chartData = new DoublyLinkedList<>();
+
+        for (int i = 1; i <= memberList.getNumberOfEntries(); i++) {
+
+            Member m = memberList.getEntry(i);
+            chartData.add(new ChartEntry(m.getMemberName(), m.getLoyaltyPoints()));
+        }
+
+        selectionSortChartEntriesDescending(chartData);
+
+        return chartData;
+    }
+
+    // Builds chart data for "Member Lifetime Earned Points", sorted descending.
+    public ListInterface<ChartEntry> getMemberLifetimeEarnedChartData(ListInterface<Member> memberList) {
+
+        ListInterface<ChartEntry> chartData = new DoublyLinkedList<>();
+
+        for (int i = 1; i <= memberList.getNumberOfEntries(); i++) {
+
+            Member m = memberList.getEntry(i);
+            chartData.add(new ChartEntry(m.getMemberName(), getLifetimeEarnedPoints(m.getMemberID())));
+        }
+
+        selectionSortChartEntriesDescending(chartData);
+
+        return chartData;
+    }
+
+    // Builds chart data for "Reward Redemption Count": filters the reward
+    // catalog down to rewards that were actually redeemed, counts how many
+    // times each was redeemed, and returns the result sorted descending.
+    public ListInterface<ChartEntry> getRedemptionCountByRewardChartData(
+            ListInterface<RedemptionRecord> redemptions) {
+
+        ListInterface<ChartEntry> chartData = new DoublyLinkedList<>();
+
+        for (int i = 1; i <= rewardCatalog.getNumberOfEntries(); i++) {
+
+            String rewardName = rewardCatalog.getEntry(i).getRewardName();
+            int count = 0;
+
+            for (int j = 1; j <= redemptions.getNumberOfEntries(); j++) {
+
+                if (redemptions.getEntry(j).getRewardName().equalsIgnoreCase(rewardName)) {
+                    count++;
+                }
+            }
+
+            if (count > 0) {
+                chartData.add(new ChartEntry(rewardName, count));
+            }
+        }
+
+        selectionSortChartEntriesDescending(chartData);
+
+        return chartData;
     }
 }
