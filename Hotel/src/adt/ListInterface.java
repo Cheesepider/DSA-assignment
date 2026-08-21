@@ -6,7 +6,7 @@ package adt;
 
 /**
  *
- * @author Jerry,KaoYongFeng,LeeShenFung,ThamClement, Lee Shen Fung
+ * @author Jerry,KaoYongFeng,LeeShenFung,ThamClement
  */
 public interface ListInterface<T> {
 
