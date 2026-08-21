@@ -11,10 +11,7 @@ import entity.RewardItem;
 import utility.VirtualClock;
 
 /**
- * Data-initialization class for the Loyalty & Reward Service module.
- * No database / text file is required for this assignment - data is
- * hardcoded and loaded into the collection ADT at startup.
- *
+
  * @author : Kao Yong Feng
  */
 public class LoyaltyDAO {
@@ -47,39 +44,23 @@ public class LoyaltyDAO {
         return rewardCatalog;
     }
 
-    // ---------------------------------------------------------
-    // Sample points transactions, for demonstrating the Points Expiry
-    // Alert feature. Reads member ID/name/points directly from whichever
-    // memberList is passed in (this DAO's own standalone seed data, OR
-    // the shared App.memberList when integrated) - so the seeded
-    // transactions always match real members, regardless of mode.
-    //
-    // IMPORTANT: each transaction's pointsEarned is taken directly from
-    // member.getLoyaltyPoints() (NOT a separately hardcoded number), so
-    // the total shown in View Points Transactions is guaranteed to match
-    // the balance shown in Generate Loyalty Report from the very start.
-    // A member with 0 points gets no transaction record at all (there is
-    // nothing outstanding to track). Earned dates are staggered across a
-    // small set of demo dates purely so the Points Expiry Alert report
-    // has a mix of soon-expiring and not-soon-expiring members to show.
-    // ---------------------------------------------------------
+ 
     public ListInterface<PointsTransaction> initializeTransactionData(ListInterface<Member> memberList, int pointsValidityMonths) {
         ListInterface<PointsTransaction> transactionList = new DoublyLinkedList<>();
         LocalDate today = VirtualClock.getInstance().today();
 
         int total = memberList.getNumberOfEntries();
         if (total == 0) {
-            return transactionList; // no members available to seed transactions for
+            return transactionList; 
         }
 
-        // demo earnedDates cycled across members purely to showcase a mix of
-        // "expiring soon" and "not expiring soon" rows in the alert report
+        
         LocalDate[] demoEarnedDates = {
-            today.minusMonths(11).minusDays(24), // ~6 days left
-            today.minusMonths(11).minusDays(19), // ~11 days left
+            today.minusMonths(11).minusDays(24), 
+            today.minusMonths(11).minusDays(19), 
             today.minusMonths(2),
             today.minusMonths(1),
-            today.minusMonths(11).minusDays(12), // ~18 days left
+            today.minusMonths(11).minusDays(12), 
             today.minusDays(5)
         };
 
@@ -87,7 +68,7 @@ public class LoyaltyDAO {
             Member member = memberList.getEntry(i);
             int points = member.getLoyaltyPoints();
             if (points <= 0) {
-                continue; // nothing outstanding to track for this member
+                continue; 
             }
             LocalDate earnedDate = demoEarnedDates[(i - 1) % demoEarnedDates.length];
             LocalDate expiryDate = earnedDate.plusMonths(pointsValidityMonths);
@@ -98,17 +79,7 @@ public class LoyaltyDAO {
         return transactionList;
     }
 
-    // ---------------------------------------------------------
-    // Sample redemption records, for demonstrating the Reward Redemption
-    // History report before any real redemption has been made in the demo.
-    // Each entry references a real member (by list position) and a real
-    // catalog reward (by list position), so the seeded history always
-    // matches actual member names and actual reward names/point costs -
-    // it never hardcodes those details separately. If the member list or
-    // reward catalog passed in is smaller than a referenced index (e.g.
-    // running with a trimmed-down demo dataset), that entry is simply
-    // skipped instead of throwing an error.
-    // ---------------------------------------------------------
+    
     public ListInterface<RedemptionRecord> initializeRedemptionHistory(
             ListInterface<Member> memberList, ListInterface<RewardItem> rewardCatalog) {
 
@@ -119,11 +90,10 @@ public class LoyaltyDAO {
         int totalRewards = rewardCatalog.getNumberOfEntries();
 
         if (totalMembers == 0 || totalRewards == 0) {
-            return redemptionList; // no members or rewards available to seed redemptions for
+            return redemptionList; 
         }
 
-        // demo redeemedDates cycled purely to showcase a spread of dates
-        // in the redemption history report
+        
         LocalDate[] demoRedeemedDates = {
             today.minusDays(2),
             today.minusDays(5),
@@ -142,9 +112,7 @@ public class LoyaltyDAO {
             today.minusDays(42)
         };
 
-        // {memberPosition, rewardPosition} pairs (1-based, matching the
-        // ADT's position convention) describing which member redeemed
-        // which catalog reward
+       
         int[][] sampleRedemptions = {
             {1, 5},
             {1, 1},

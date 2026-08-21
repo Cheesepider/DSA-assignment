@@ -4,15 +4,7 @@ import java.time.LocalDate;
 import java.util.concurrent.atomic.AtomicInteger;
 
 /**
- * Entity class representing a single reward-redemption event: which member
- * redeemed which reward, how many points it cost, and when. Kept as a
- * separate record (rather than only mutating Member.loyaltyPoints) so that
- * the Loyalty & Reward Service module can show a member's full redemption
- * history, not just their current point balance.
- *
- * Plain old Java object (POJO) - no input/output statements here, as per
- * assignment guidelines.
- *
+ 
  * @author: Kao Yong Feng
  */
 public class RedemptionRecord {

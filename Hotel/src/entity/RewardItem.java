@@ -3,10 +3,7 @@ package entity;
 import java.util.concurrent.atomic.AtomicInteger;
 
 /**
- * Entity class representing a reward that a member can redeem using loyalty
- * points. Plain old Java object (POJO) - no input/output statements here,
- * as per assignment guidelines.
- *
+ 
  * @author: Kao Yong FEng
  */
 public class RewardItem {

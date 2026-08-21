@@ -181,7 +181,6 @@ public class LoyaltyControl {
         return false;
     }
 
-    // Bill Calculation & Stay Point Queueing
     public double calculateStayBill(Booking booking) {
 
         Room room = booking.getRoom();
@@ -269,7 +268,6 @@ public class LoyaltyControl {
         return newlyQueued;
     }
 
-    // Points Accumulation Queue Operations
     public boolean grantPromotionalPoints(int memberID, int points, String reason) {
 
         Member member = findMemberByID(memberID);
@@ -386,7 +384,6 @@ public class LoyaltyControl {
         return null;
     }
 
-    // Expiry Management
     public ListInterface<PointsTransaction> expireOverduePoints() {
 
         ensureSharedDataInitialized();
@@ -446,7 +443,6 @@ public class LoyaltyControl {
         return allTransactions;
     }
 
-    // Reward Redemption Operations
     public int redeemReward(int memberID, int rewardID) {
 
         Member member = findMemberByID(memberID);
@@ -549,7 +545,6 @@ public class LoyaltyControl {
         return true;
     }
 
-    // Member Search & Filtering
     public Member findMemberByID(int memberID) {
 
         ListInterface<Member> sortedCopy = App.memberList.copy();
@@ -611,7 +606,6 @@ public class LoyaltyControl {
         return results;
     }
 
-    // Sorting Algorithms
     public void selectionSortByID(ListInterface<Member> list) {
 
         int n = list.getNumberOfEntries();
@@ -650,9 +644,7 @@ public class LoyaltyControl {
         }
     }
 
-    //Below are counters for displaying in report as summary before displaying table
-    ////////////////////////////////////////////////////////////////////////////
-    /// @return 
+    
     public int countTotalMembers() {
         return App.memberList.getNumberOfEntries();
     }
