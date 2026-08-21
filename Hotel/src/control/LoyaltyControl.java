@@ -1,571 +1,720 @@
+/*
+ * Click nbfs://nbhost/SystemFileSystem/Templates/Licenses/license-default.txt to change this license
+ * Click nbfs://nbhost/SystemFileSystem/Templates/Classes/Class.java to edit this template
+ */
 package control;
 
-import java.time.LocalDate;
-import java.time.format.DateTimeFormatter;
-import java.time.temporal.ChronoUnit;
-
-import dao.LoyaltyDAO;
-import dao.RegistrationDAO;
+/**
+ *
+ * @author Kao Yong Feng
+ */
 import adt.DoublyLinkedList;
 import adt.ListInterface;
+import dao.LoyaltyDAO;
+import dao.RegistrationDAO;
+import entity.Booking;
+import entity.LifetimeEarnedPoints;
 import entity.Member;
 import entity.Member.LoyaltyTier;
+import entity.PendingPointsCredit;
+import entity.PendingPointsCredit.CreditSource;
 import entity.PointsTransaction;
+import entity.RedemptionRecord;
 import entity.RewardItem;
+import entity.Room;
+import java.time.LocalDate;
+import java.time.temporal.ChronoUnit;
 import main.App;
-import utility.ReportFormatUtility;
 import utility.VirtualClock;
 
-/**
- * Control class for the Loyalty & Reward Service module.
- * Handles: earning points, redeeming rewards, automatic tier
- * upgrade/downgrade, member search (by ID/name/tier), reward catalog CRUD,
- * and generating reports (ranking, tier distribution, points expiry).
- *
- * Sorting and searching algorithms are self-implemented (selection sort,
- * bubble sort, insertion sort, binary search, linear search) using the
- * team's shared ListInterface operations - including swap(), the new
- * operation added to the team's ADT. No java.util.Collections /
- * Arrays.sort / Java Collections Framework is used anywhere.
- *
- * All date/time values come from utility.VirtualClock rather than the
- * real system clock, so the module stays in sync with the rest of the
- * application when the demo clock is advanced.
- */
-
-/**
- 
- * @author : Kao Yong Feng
- */
 public class LoyaltyControl {
 
-    private ListInterface<Member> memberList;
+    // ==========================================================
+    // Loyalty & Reward Module Collection ADTs
+    // ==========================================================
+    public static ListInterface<RewardItem> rewardCatalog = new DoublyLinkedList<>();
+    public static ListInterface<PointsTransaction> pointsTransactionList = new DoublyLinkedList<>();
+    public static ListInterface<PendingPointsCredit> pendingPointsQueue = new DoublyLinkedList<>();
+    public static ListInterface<RedemptionRecord> redemptionHistoryList = new DoublyLinkedList<>();
+    public static ListInterface<LifetimeEarnedPoints> lifetimeEarnedList = new DoublyLinkedList<>();
+    public static ListInterface<Integer> queuedStayBookingIDs = new DoublyLinkedList<>();
 
-    // static: shared across every LoyaltyControl instance for the lifetime of
-    // the program, so reward catalog / transaction history persist even
-    // though App.java creates a brand new LoyaltyUI/LoyaltyControl each time
-    // the Loyalty module is re-entered from the main menu. This mirrors how
-    // App.memberList already persists (it's a static field on App itself).
-    private static ListInterface<RewardItem> rewardCatalog;
-    private static ListInterface<PointsTransaction> transactionList;
+    private static LoyaltyDAO loyaltyDAO = new LoyaltyDAO();
+    private static boolean sharedDataInitialized = false;
 
-    private LoyaltyDAO loyaltyDAO = new LoyaltyDAO();
+    public static final int PLATINUM_THRESHOLD = 1000;
+    public static final int DIAMOND_THRESHOLD = 3000;
+    public static final int ELITE_THRESHOLD = 6000;
 
-    // Points thresholds that trigger an automatic tier change
-    private static final int PLATINUM_THRESHOLD = 1000;
-    private static final int DIAMOND_THRESHOLD = 3000;
-    private static final int ELITE_THRESHOLD = 6000;
-
-    // Points earned expire this many months after the date they were earned
-    private static final int POINTS_VALIDITY_MONTHS = 12;
-    // default look-ahead window (in days) for the expiry alert
+    public static final int POINTS_VALIDITY_MONTHS = 12;
     public static final int DEFAULT_EXPIRY_ALERT_DAYS = 30;
+    public static final double DOLLARS_PER_POINT = 1.0;
 
-    // standalone mode: uses RegistrationDAO's member data (App.memberList)
-    // so that this module can still be run/tested independently, without
-    // duplicating a separate set of hardcoded members just for this module.
-    // If App.memberList hasn't been populated yet (e.g. running LoyaltyUI's
-    // main() directly, without going through the full App startup), it is
-    // seeded here first.
+    public static final int REDEEM_SUCCESS = 0;
+    public static final int REDEEM_MEMBER_NOT_FOUND = 1;
+    public static final int REDEEM_REWARD_NOT_FOUND = 2;
+    public static final int REDEEM_INSUFFICIENT_POINTS = 3;
+
     public LoyaltyControl() {
-        if (App.memberList.isEmpty()) {
+
+        if (App.memberList == null || App.memberList.isEmpty()) {
             RegistrationDAO.initializeMemberData();
         }
-        memberList = App.memberList;
-        initializeSharedDataIfNeeded();
+
+        ensureSharedDataInitialized();
     }
 
-    // integrated mode: uses the application-wide shared memberList
-    // (App.memberList) so points/tier changes are visible to every other
-    // module, and members registered elsewhere are visible here too
     public LoyaltyControl(ListInterface<Member> sharedMemberList) {
-        memberList = sharedMemberList;
-        initializeSharedDataIfNeeded();
+
+        if (sharedMemberList != null && !sharedMemberList.isEmpty()) {
+            App.memberList = sharedMemberList;
+        }
+
+        ensureSharedDataInitialized();
     }
 
-    // reward catalog and transaction history are only seeded once per
-    // program run (guarded by the null check), instead of being rebuilt
-    // every time a new LoyaltyControl is constructed - so data added or
-    // changed during one visit to the module is still there the next time
-    // the module is opened, without needing any changes to App.java
-    private void initializeSharedDataIfNeeded() {
-        if (rewardCatalog == null) {
-            rewardCatalog = loyaltyDAO.initializeRewardCatalog();
+    public static void ensureSharedDataInitialized() {
+
+        if (sharedDataInitialized) {
+            return;
         }
-        if (transactionList == null) {
-            transactionList = loyaltyDAO.initializeTransactionData(memberList, POINTS_VALIDITY_MONTHS);
+
+        if (rewardCatalog.isEmpty()) {
+
+            ListInterface<RewardItem> seededCatalog = loyaltyDAO.initializeRewardCatalog();
+
+            for (int i = 1; i <= seededCatalog.getNumberOfEntries(); i++) {
+                rewardCatalog.add(seededCatalog.getEntry(i));
+            }
+        }
+
+        if (pointsTransactionList.isEmpty()) {
+
+            ListInterface<PointsTransaction> seededTransactions
+                    = loyaltyDAO.initializeTransactionData(App.memberList, POINTS_VALIDITY_MONTHS);
+
+            for (int i = 1; i <= seededTransactions.getNumberOfEntries(); i++) {
+                pointsTransactionList.add(seededTransactions.getEntry(i));
+            }
+        }
+
+        if (lifetimeEarnedList.isEmpty()) {
+
+            for (int i = 1; i <= App.memberList.getNumberOfEntries(); i++) {
+
+                Member m = App.memberList.getEntry(i);
+
+                if (m.getLoyaltyPoints() > 0) {
+                    lifetimeEarnedList.add(new LifetimeEarnedPoints(m.getMemberID(), m.getLoyaltyPoints()));
+                }
+            }
+        }
+
+        if (redemptionHistoryList.isEmpty()) {
+
+            ListInterface<RedemptionRecord> seededRedemptions
+                    = loyaltyDAO.initializeRedemptionHistory(App.memberList, rewardCatalog);
+
+            for (int i = 1; i <= seededRedemptions.getNumberOfEntries(); i++) {
+                redemptionHistoryList.add(seededRedemptions.getEntry(i));
+            }
+        }
+
+        sharedDataInitialized = true;
+    }
+
+    // Lifetime Points Management
+    private static int findLifetimeEarnedPosition(int memberID) {
+
+        LifetimeEarnedPoints probe = new LifetimeEarnedPoints();
+        probe.setMemberID(memberID);
+
+        return lifetimeEarnedList.indexOf(probe);
+    }
+
+    public int getLifetimeEarnedPoints(int memberID) {
+
+        int position = findLifetimeEarnedPosition(memberID);
+
+        return position == -1 ? 0 : lifetimeEarnedList.getEntry(position).getTotalEarned();
+    }
+
+    public void addLifetimeEarned(int memberID, int pointsToAdd) {
+
+        int position = findLifetimeEarnedPosition(memberID);
+
+        if (position == -1) {
+            lifetimeEarnedList.add(new LifetimeEarnedPoints(memberID, pointsToAdd));
+        } else {
+            lifetimeEarnedList.getEntry(position).addTotalEarned(pointsToAdd);
         }
     }
 
-    // =========================================================
-    // Use Case 1: Earn Loyalty Points
-    // =========================================================
-    public String earnPoints(int memberID, int pointsEarned) {
-        if (pointsEarned <= 0) {
-            return "Points earned must be a positive value.";
+    public LoyaltyTier calculateTier(int lifetimePoints) {
+
+        if (lifetimePoints >= ELITE_THRESHOLD) {
+            return LoyaltyTier.Elite;
+        } else if (lifetimePoints >= DIAMOND_THRESHOLD) {
+            return LoyaltyTier.Diamond;
+        } else if (lifetimePoints >= PLATINUM_THRESHOLD) {
+            return LoyaltyTier.Platinum;
+        } else {
+            return LoyaltyTier.Regular;
         }
-        Member member = findMemberByID(memberID);
+    }
+
+    public boolean updateTier(Member member) {
+
         if (member == null) {
-            return "Member with ID " + memberID + " not found.";
+            return false;
         }
 
-        // member is the same object reference stored inside memberList (the
-        // ADT stores references, not copies), so mutating it here already
-        // updates the shared list directly - no replace() call is needed
-        member.setLoyaltyPoints(member.getLoyaltyPoints() + pointsEarned);
-        String tierMessage = updateTier(member);
+        LoyaltyTier oldTier = member.getLoyaltyTier();
+        int lifetimePoints = getLifetimeEarnedPoints(member.getMemberID());
+        LoyaltyTier newTier = calculateTier(lifetimePoints);
+
+        if (newTier != oldTier) {
+            member.setLoyaltyTier(newTier);
+            return true;
+        }
+
+        return false;
+    }
+
+    // Bill Calculation & Stay Point Queueing
+    public double calculateStayBill(Booking booking) {
+
+        Room room = booking.getRoom();
+
+        if (room == null) {
+            return 0.0;
+        }
+
+        double rate = room.getRoomType().getBaseRate();
+        LocalDate checkIn = booking.getCheckInDate();
+        LocalDate scheduledCheckOut = booking.getCheckOutDate();
+        LocalDate actualCheckOut = booking.getBookingDate();
+
+        long scheduledNights = ChronoUnit.DAYS.between(checkIn, scheduledCheckOut);
+
+        if (scheduledNights <= 0) {
+            scheduledNights = 1;
+        }
+
+        long overstayDays = ChronoUnit.DAYS.between(scheduledCheckOut, actualCheckOut);
+
+        if (overstayDays > 0) {
+
+            double normalCharge = scheduledNights * rate;
+            double penaltyCharge = overstayDays * rate * 1.5;
+
+            return normalCharge + penaltyCharge;
+
+        } else {
+
+            long actualNights = ChronoUnit.DAYS.between(checkIn, actualCheckOut);
+
+            if (actualNights <= 0) {
+                actualNights = 1;
+            }
+
+            return actualNights * rate;
+        }
+    }
+
+    public ListInterface<PendingPointsCredit> queueCompletedStayPoints() {
+
+        ensureSharedDataInitialized();
+
+        ListInterface<PendingPointsCredit> newlyQueued = new DoublyLinkedList<>();
+
+        for (int i = 1; i <= App.bookingHistoryList.getNumberOfEntries(); i++) {
+
+            Booking booking = App.bookingHistoryList.getEntry(i);
+
+            if (booking.getBookingStatus() != Booking.BookingStatus.CHECKED_OUT) {
+                continue;
+            }
+
+            if (queuedStayBookingIDs.contains(booking.getBookingID())) {
+                continue;
+            }
+
+            queuedStayBookingIDs.add(booking.getBookingID());
+
+            Member member = booking.getMember();
+            double amountSpent = calculateStayBill(booking);
+            int pointsEarned = (int) (amountSpent / DOLLARS_PER_POINT);
+
+            if (pointsEarned <= 0 || member == null) {
+                continue;
+            }
+
+            String sourceDetail = "Booking #" + booking.getBookingID() + " ($"
+                    + String.format("%.2f", amountSpent) + " spent)";
+
+            PendingPointsCredit credit = new PendingPointsCredit(
+                    member.getMemberID(),
+                    member.getMemberName(),
+                    CreditSource.STAY,
+                    sourceDetail,
+                    pointsEarned,
+                    VirtualClock.getInstance().today()
+            );
+
+            pendingPointsQueue.add(credit);
+            newlyQueued.add(credit);
+        }
+
+        return newlyQueued;
+    }
+
+    // Points Accumulation Queue Operations
+    public boolean grantPromotionalPoints(int memberID, int points, String reason) {
+
+        Member member = findMemberByID(memberID);
+
+        if (member == null || points <= 0 || reason == null || reason.trim().isEmpty()) {
+            return false;
+        }
+
+        PendingPointsCredit credit = new PendingPointsCredit(
+                member.getMemberID(),
+                member.getMemberName(),
+                CreditSource.PROMOTION,
+                reason.trim(),
+                points,
+                VirtualClock.getInstance().today()
+        );
+
+        pendingPointsQueue.add(credit);
+
+        return true;
+    }
+
+    public ListInterface<PendingPointsCredit> getPendingPointsQueue() {
+        return pendingPointsQueue;
+    }
+
+    public PendingPointsCredit processNextPendingPointsCredit() {
+
+        if (pendingPointsQueue.isEmpty()) {
+            return null;
+        }
+
+        PendingPointsCredit nextCredit = pendingPointsQueue.remove(1);
+        Member member = findMemberByID(nextCredit.getMemberID());
+
+        if (member != null) {
+            creditPointsToMember(member, nextCredit.getPointsToCredit());
+        }
+
+        return nextCredit;
+    }
+
+    public ListInterface<PendingPointsCredit> processAllPendingPointsCredits() {
+
+        ListInterface<PendingPointsCredit> processedList = new DoublyLinkedList<>();
+
+        while (!pendingPointsQueue.isEmpty()) {
+
+            PendingPointsCredit credit = processNextPendingPointsCredit();
+
+            if (credit != null) {
+                processedList.add(credit);
+            }
+        }
+
+        return processedList;
+    }
+
+    public PendingPointsCredit rejectPendingPointsCredit(int creditID) {
+
+        PendingPointsCredit probe = new PendingPointsCredit();
+        probe.setCreditID(creditID);
+
+        int position = pendingPointsQueue.indexOf(probe);
+
+        if (position == -1) {
+            return null;
+        }
+
+        return pendingPointsQueue.remove(position);
+    }
+
+    public void creditPointsToMember(Member member, int pointsToCredit) {
+
+        if (member == null || pointsToCredit <= 0) {
+            return;
+        }
+
+        member.setLoyaltyPoints(member.getLoyaltyPoints() + pointsToCredit);
+        addLifetimeEarned(member.getMemberID(), pointsToCredit);
+        updateTier(member);
 
         LocalDate earnedDate = VirtualClock.getInstance().today();
         LocalDate expiryDate = earnedDate.plusMonths(POINTS_VALIDITY_MONTHS);
 
-        // Each member has ONE consolidated points-transaction record (not a
-        // separate batch per earn) - View Points Transactions should always
-        // show a single row per member with their combined point total.
-        // Earning more points adds onto that existing record and resets its
-        // expiry to count down from today again; a member with no record
-        // yet gets a new one.
-        PointsTransaction existing = findTransactionByMemberID(memberID);
+        PointsTransaction existing = findTransactionByMemberID(member.getMemberID());
+
         if (existing != null) {
-            existing.setPointsEarned(existing.getPointsEarned() + pointsEarned);
+            existing.setPointsEarned(existing.getPointsEarned() + pointsToCredit);
             existing.setEarnedDate(earnedDate);
             existing.setExpiryDate(expiryDate);
         } else {
-            transactionList.add(new PointsTransaction(member.getMemberID(), member.getMemberName(),
-                    pointsEarned, earnedDate, expiryDate));
+            pointsTransactionList.add(new PointsTransaction(
+                    member.getMemberID(),
+                    member.getMemberName(),
+                    pointsToCredit,
+                    earnedDate,
+                    expiryDate
+            ));
         }
-
-        StringBuilder sb = new StringBuilder();
-        sb.append(member.getMemberName()).append(" earned ").append(pointsEarned)
-          .append(" points. New balance: ").append(member.getLoyaltyPoints()).append(" points.");
-        if (!tierMessage.isEmpty()) {
-            sb.append("\n").append(tierMessage);
-        }
-        return sb.toString();
     }
 
-    // Returns the given member's single consolidated points-transaction
-    // record, or null if the member has never earned any points yet.
-    private PointsTransaction findTransactionByMemberID(int memberID) {
-        for (int i = 1; i <= transactionList.getNumberOfEntries(); i++) {
-            PointsTransaction t = transactionList.getEntry(i);
+    public PointsTransaction findTransactionByMemberID(int memberID) {
+
+        for (int i = 1; i <= pointsTransactionList.getNumberOfEntries(); i++) {
+
+            PointsTransaction t = pointsTransactionList.getEntry(i);
+
             if (t.getMemberID() == memberID) {
                 return t;
             }
         }
+
         return null;
     }
 
-    // =========================================================
-    // Use Case 2: Redeem Reward
-    // =========================================================
-    public String redeemReward(int memberID, int rewardID) {
+    // Expiry Management
+    public ListInterface<PointsTransaction> expireOverduePoints() {
+
+        ensureSharedDataInitialized();
+
+        LocalDate today = VirtualClock.getInstance().today();
+        ListInterface<PointsTransaction> expiredList = new DoublyLinkedList<>();
+
+        for (int i = pointsTransactionList.getNumberOfEntries(); i >= 1; i--) {
+
+            PointsTransaction t = pointsTransactionList.getEntry(i);
+
+            if (!today.isAfter(t.getExpiryDate())) {
+                continue;
+            }
+
+            Member member = findMemberByID(t.getMemberID());
+
+            if (member != null && t.getPointsEarned() > 0) {
+
+                int forfeited = Math.min(t.getPointsEarned(), member.getLoyaltyPoints());
+                member.setLoyaltyPoints(member.getLoyaltyPoints() - forfeited);
+
+                expiredList.add(t);
+            }
+
+            pointsTransactionList.remove(i);
+        }
+
+        return expiredList;
+    }
+
+    public ListInterface<PointsTransaction> getExpiringTransactions(int daysThreshold) {
+
+        LocalDate today = VirtualClock.getInstance().today();
+        ListInterface<PointsTransaction> expiringList = new DoublyLinkedList<>();
+
+        for (int i = 1; i <= pointsTransactionList.getNumberOfEntries(); i++) {
+
+            PointsTransaction t = pointsTransactionList.getEntry(i);
+            long daysLeft = ChronoUnit.DAYS.between(today, t.getExpiryDate());
+
+            if (daysLeft >= 0 && daysLeft <= daysThreshold) {
+                expiringList.add(t);
+            }
+        }
+
+        insertionSortByExpiryDate(expiringList);
+
+        return expiringList;
+    }
+
+    public ListInterface<PointsTransaction> getAllTransactions() {
+
+        ListInterface<PointsTransaction> allTransactions = pointsTransactionList.copy();
+        insertionSortByExpiryDate(allTransactions);
+
+        return allTransactions;
+    }
+
+    // Reward Redemption Operations
+    public int redeemReward(int memberID, int rewardID) {
+
         Member member = findMemberByID(memberID);
+
         if (member == null) {
-            return "Member with ID " + memberID + " not found.";
+            return REDEEM_MEMBER_NOT_FOUND;
         }
+
         RewardItem reward = findRewardByID(rewardID);
+
         if (reward == null) {
-            return "Reward with ID " + rewardID + " not found in catalog.";
+            return REDEEM_REWARD_NOT_FOUND;
         }
+
         if (member.getLoyaltyPoints() < reward.getPointsRequired()) {
-            return member.getMemberName() + " has insufficient points to redeem \"" +
-                    reward.getRewardName() + "\" (needs " + reward.getPointsRequired() +
-                    ", has " + member.getLoyaltyPoints() + ").";
+            return REDEEM_INSUFFICIENT_POINTS;
         }
 
         member.setLoyaltyPoints(member.getLoyaltyPoints() - reward.getPointsRequired());
-        String tierMessage = updateTier(member);
 
-        // Redeeming only lowers the points on the member's consolidated
-        // transaction record - the expiry date stays exactly as it was.
-        // Redemption doesn't earn anything new, so it shouldn't push the
-        // countdown back out.
         PointsTransaction existing = findTransactionByMemberID(member.getMemberID());
+
         if (existing != null) {
-            int remainingPoints = existing.getPointsEarned() - reward.getPointsRequired();
-            existing.setPointsEarned(Math.max(remainingPoints, 0));
+            int remaining = existing.getPointsEarned() - reward.getPointsRequired();
+            existing.setPointsEarned(Math.max(remaining, 0));
         }
 
-        StringBuilder sb = new StringBuilder();
-        sb.append(member.getMemberName()).append(" redeemed \"").append(reward.getRewardName())
-          .append("\" for ").append(reward.getPointsRequired()).append(" points. Remaining balance: ")
-          .append(member.getLoyaltyPoints()).append(" points.");
-        if (!tierMessage.isEmpty()) {
-            sb.append("\n").append(tierMessage);
-        }
-        return sb.toString();
+        RedemptionRecord record = new RedemptionRecord(
+                member.getMemberID(),
+                member.getMemberName(),
+                reward.getRewardID(),
+                reward.getRewardName(),
+                reward.getPointsRequired(),
+                VirtualClock.getInstance().today()
+        );
+
+        redemptionHistoryList.add(1, record);
+
+        return REDEEM_SUCCESS;
     }
 
-    // =========================================================
-    // Use Case 3: Automatic Tier Upgrade / Downgrade
-    // =========================================================
-    private String updateTier(Member member) {
-        LoyaltyTier oldTier = member.getLoyaltyTier();
-        LoyaltyTier newTier;
-        int points = member.getLoyaltyPoints();
-
-        if (points >= ELITE_THRESHOLD) {
-            newTier = LoyaltyTier.Elite;
-        } else if (points >= DIAMOND_THRESHOLD) {
-            newTier = LoyaltyTier.Diamond;
-        } else if (points >= PLATINUM_THRESHOLD) {
-            newTier = LoyaltyTier.Platinum;
-        } else {
-            newTier = LoyaltyTier.Regular;
-        }
-
-        if (newTier != oldTier) {
-            member.setLoyaltyTier(newTier);
-            if (newTier.ordinal() > oldTier.ordinal()) {
-                return "Congratulations! " + member.getMemberName() + " has been upgraded from "
-                        + oldTier + " to " + newTier + "!";
-            } else {
-                return member.getMemberName() + " has been moved down from "
-                        + oldTier + " to " + newTier + ".";
-            }
-        }
-        return "";
+    public ListInterface<RedemptionRecord> getRedemptionHistory() {
+        return redemptionHistoryList;
     }
 
-    // =========================================================
-    // Use Case 4: Search Member (by ID / Name / Tier)
-    // =========================================================
-
-    public Member searchMemberByID(int memberID) {
-        return findMemberByID(memberID);
+    // Reward Catalog Management
+    public ListInterface<RewardItem> getRewardCatalog() {
+        return rewardCatalog;
     }
 
-    // linear search, partial case-insensitive match on name
-    public ListInterface<Member> searchMemberByName(String nameKeyword) {
-        ListInterface<Member> results = new DoublyLinkedList<>();
-        for (int i = 1; i <= memberList.getNumberOfEntries(); i++) {
-            Member m = memberList.getEntry(i);
-            if (m.getMemberName().toLowerCase().contains(nameKeyword.toLowerCase())) {
-                results.add(m);
-            }
+    public RewardItem findRewardByID(int rewardID) {
+
+        RewardItem probe = new RewardItem();
+        probe.setRewardID(rewardID);
+
+        int position = rewardCatalog.indexOf(probe);
+
+        return position == -1 ? null : rewardCatalog.getEntry(position);
+    }
+
+    public boolean addRewardItem(String rewardName, String description, int pointsRequired) {
+
+        if (rewardName == null || rewardName.trim().isEmpty() || pointsRequired <= 0) {
+            return false;
         }
-        return results;
+
+        RewardItem newReward = new RewardItem(rewardName.trim(), description, pointsRequired);
+        rewardCatalog.add(newReward);
+
+        return true;
     }
 
-    // linear search, exact match on loyalty tier
-    public ListInterface<Member> searchMemberByTier(LoyaltyTier tier) {
-        ListInterface<Member> results = new DoublyLinkedList<>();
-        for (int i = 1; i <= memberList.getNumberOfEntries(); i++) {
-            Member m = memberList.getEntry(i);
-            if (m.getLoyaltyTier() == tier) {
-                results.add(m);
-            }
+    public boolean updateRewardItem(int rewardID, String newName, int newPointsRequired) {
+
+        RewardItem reward = findRewardByID(rewardID);
+
+        if (reward == null || newName == null || newName.trim().isEmpty() || newPointsRequired <= 0) {
+            return false;
         }
-        return results;
+
+        reward.setRewardName(newName.trim());
+        reward.setPointsRequired(newPointsRequired);
+
+        return true;
     }
 
-    // binary search on a member-ID-sorted copy of the list
-    private Member findMemberByID(int memberID) {
-        ListInterface<Member> sortedCopy = memberList.copy();
+    public boolean deleteRewardItem(int rewardID) {
+
+        RewardItem probe = new RewardItem();
+        probe.setRewardID(rewardID);
+
+        int position = rewardCatalog.indexOf(probe);
+
+        if (position == -1) {
+            return false;
+        }
+
+        rewardCatalog.remove(position);
+
+        return true;
+    }
+
+    // Member Search & Filtering
+    public Member findMemberByID(int memberID) {
+
+        ListInterface<Member> sortedCopy = App.memberList.copy();
         selectionSortByID(sortedCopy);
 
         int low = 1;
         int high = sortedCopy.getNumberOfEntries();
+
         while (low <= high) {
+
             int mid = (low + high) / 2;
             Member midMember = sortedCopy.getEntry(mid);
+
             if (midMember.getMemberID() == memberID) {
-                return midMember; // same object reference as the one stored in memberList
+                return midMember;
             } else if (midMember.getMemberID() < memberID) {
                 low = mid + 1;
             } else {
                 high = mid - 1;
             }
         }
+
         return null;
     }
 
-    // catalog is small - linear search is sufficient
-    private RewardItem findRewardByID(int rewardID) {
-        int position = findRewardPosition(rewardID);
-        return position == -1 ? null : rewardCatalog.getEntry(position);
+    public ListInterface<Member> getAllMembers() {
+        return App.memberList;
     }
 
-    // RewardItem.equals() compares only rewardID, so a "probe" object with
-    // just the ID set is enough for the ADT's indexOf() to find the real
-    // match position in rewardCatalog.
-    private int findRewardPosition(int rewardID) {
-        RewardItem probe = new RewardItem();
-        probe.setRewardID(rewardID);
-        return rewardCatalog.indexOf(probe);
+    public ListInterface<Member> searchMemberByName(String nameKeyword) {
+
+        ListInterface<Member> results = new DoublyLinkedList<>();
+
+        for (int i = 1; i <= App.memberList.getNumberOfEntries(); i++) {
+
+            Member m = App.memberList.getEntry(i);
+
+            if (m.getMemberName().toLowerCase().contains(nameKeyword.toLowerCase())) {
+                results.add(m);
+            }
+        }
+
+        return results;
     }
 
-    // =========================================================
-    // Self-implemented sorting algorithms, all using the ADT's swap()
-    // operation (no Collections.sort / Arrays.sort)
-    // =========================================================
+    public ListInterface<Member> searchMemberByTier(LoyaltyTier tier) {
 
-    // Selection Sort - ascending by member ID (used before binary search)
-    private void selectionSortByID(ListInterface<Member> list) {
+        ListInterface<Member> results = new DoublyLinkedList<>();
+
+        for (int i = 1; i <= App.memberList.getNumberOfEntries(); i++) {
+
+            Member m = App.memberList.getEntry(i);
+
+            if (m.getLoyaltyTier() == tier) {
+                results.add(m);
+            }
+        }
+
+        return results;
+    }
+
+    // Sorting Algorithms
+    public void selectionSortByID(ListInterface<Member> list) {
+
         int n = list.getNumberOfEntries();
+
         for (int i = 1; i <= n - 1; i++) {
+
             int minPos = i;
+
             for (int j = i + 1; j <= n; j++) {
+
                 if (list.getEntry(j).getMemberID() < list.getEntry(minPos).getMemberID()) {
                     minPos = j;
                 }
             }
+
             if (minPos != i) {
                 list.swap(i, minPos);
             }
         }
     }
 
-    // Bubble Sort - descending by points (used for the ranking report)
-    private void bubbleSortByPointsDescending(ListInterface<Member> list) {
-        int n = list.getNumberOfEntries();
-        for (int i = 1; i <= n - 1; i++) {
-            for (int j = 1; j <= n - i; j++) {
-                if (list.getEntry(j).getLoyaltyPoints() < list.getEntry(j + 1).getLoyaltyPoints()) {
-                    list.swap(j, j + 1);
-                }
-            }
-        }
-    }
+    public void insertionSortByExpiryDate(ListInterface<PointsTransaction> list) {
 
-    // Insertion Sort (via adjacent swaps) - ascending by expiry date
-    private void insertionSortByExpiryDate(ListInterface<PointsTransaction> list) {
         int n = list.getNumberOfEntries();
+
         for (int i = 2; i <= n; i++) {
+
             int j = i;
-            while (j > 1 && list.getEntry(j).getExpiryDate().isBefore(list.getEntry(j - 1).getExpiryDate())) {
+
+            while (j > 1 && list.getEntry(j).getExpiryDate()
+                    .isBefore(list.getEntry(j - 1).getExpiryDate())) {
+
                 list.swap(j, j - 1);
                 j--;
             }
         }
     }
 
-    // =========================================================
-    // Use Case 5: Generate Loyalty Ranking Report (by points)
-    // =========================================================
-    public String generateLoyaltyReport() {
-        ListInterface<Member> sortedList = memberList.copy();
-        bubbleSortByPointsDescending(sortedList);
-
-        StringBuilder sb = new StringBuilder();
-        sb.append(ReportFormatUtility.buildHeader("MEMBER RANKING REPORT (BY POINTS)", VirtualClock.getInstance().now()));
-        sb.append(String.format("%-5s %-10s %-20s %-12s %-10s%n", "Rank", "Member ID", "Member Name", "Tier", "Points"));
-        sb.append(ReportFormatUtility.separatorLine());
-
-        int total = sortedList.getNumberOfEntries();
-        String[] labels = new String[total];
-        int[] points = new int[total];
-        for (int i = 1; i <= total; i++) {
-            Member m = sortedList.getEntry(i);
-            sb.append(String.format("%-5d %-10d %-20s %-12s %-10d%n",
-                    i, m.getMemberID(), m.getMemberName(), m.getLoyaltyTier(), m.getLoyaltyPoints()));
-            labels[i - 1] = m.getMemberName();
-            points[i - 1] = m.getLoyaltyPoints();
-        }
-
-        sb.append(ReportFormatUtility.separatorLine());
-        sb.append(ReportFormatUtility.buildBarChart("POINTS DISTRIBUTION", labels, points, "points"));
-        sb.append(ReportFormatUtility.buildFooter("Total members displayed", total));
-        return sb.toString();
+    //Below are counters for displaying in report as summary before displaying table
+    ////////////////////////////////////////////////////////////////////////////
+    /// @return 
+    public int countTotalMembers() {
+        return App.memberList.getNumberOfEntries();
     }
 
-    // =========================================================
-    // Use Case 6: Generate Tier Distribution Report
-    // =========================================================
-    public String generateTierDistributionReport() {
-        LoyaltyTier[] tiers = LoyaltyTier.values();
-        int[] memberCount = new int[tiers.length];
-        int[] totalPoints = new int[tiers.length];
+    public int countMembersByTier(LoyaltyTier tier) {
 
-        for (int i = 1; i <= memberList.getNumberOfEntries(); i++) {
-            Member m = memberList.getEntry(i);
-            int tierIndex = m.getLoyaltyTier().ordinal();
-            memberCount[tierIndex]++;
-            totalPoints[tierIndex] += m.getLoyaltyPoints();
+        int count = 0;
+
+        for (int i = 1; i <= App.memberList.getNumberOfEntries(); i++) {
+
+            Member m = App.memberList.getEntry(i);
+
+            if (m.getLoyaltyTier() == tier) {
+                count++;
+            }
         }
 
-        int totalMembers = memberList.getNumberOfEntries();
-
-        StringBuilder sb = new StringBuilder();
-        sb.append(ReportFormatUtility.buildHeader("TIER DISTRIBUTION SUMMARY REPORT", VirtualClock.getInstance().now()));
-        sb.append(String.format("%-12s %-14s %-16s %-12s%n", "Tier", "No. Members", "Total Points", "Avg Points"));
-        sb.append(ReportFormatUtility.separatorLine());
-
-        int total = tiers.length;
-        String[] tierLabels = new String[total];
-        int[] tierMemberCounts = new int[total];
-        int chartIndex = 0;
-        for (int i = tiers.length - 1; i >= 0; i--) { // display highest tier (Elite) first
-            int count = memberCount[i];
-            int avg = count == 0 ? 0 : totalPoints[i] / count;
-            sb.append(String.format("%-12s %-14d %-16d %-12d%n", tiers[i], count, totalPoints[i], avg));
-            tierLabels[chartIndex] = tiers[i].toString();
-            tierMemberCounts[chartIndex] = count;
-            chartIndex++;
-        }
-
-        sb.append(ReportFormatUtility.separatorLine());
-        sb.append(ReportFormatUtility.buildBarChart("MEMBER COUNT BY TIER", tierLabels, tierMemberCounts, "member(s)"));
-        sb.append(ReportFormatUtility.buildFooter("Total members in program", totalMembers));
-        return sb.toString();
+        return count;
     }
 
-    // =========================================================
-    // Use Case 7: Points Expiry Notifications / Alert
-    // =========================================================
+    public int countTotalSpendablePoints() {
 
-    /**
-     * Returns the number of points transactions expiring within the given
-     * number of days from today. Used to show a quick alert banner when the
-     * module starts, without needing to build the full report.
-     */
-    public int getExpiringTransactionCount(int daysThreshold) {
+        int total = 0;
+
+        for (int i = 1; i <= App.memberList.getNumberOfEntries(); i++) {
+            total += App.memberList.getEntry(i).getLoyaltyPoints();
+        }
+
+        return total;
+    }
+
+    public int countTotalRewards() {
+        return rewardCatalog.getNumberOfEntries();
+    }
+
+    public int countTotalTransactions() {
+        return pointsTransactionList.getNumberOfEntries();
+    }
+
+    public int countTotalRedemptions() {
+        return redemptionHistoryList.getNumberOfEntries();
+    }
+
+    public int countTotalPendingCredits() {
+        return pendingPointsQueue.getNumberOfEntries();
+    }
+
+    public int countExpiringTransactions(int daysThreshold) {
+
         int count = 0;
         LocalDate today = VirtualClock.getInstance().today();
-        for (int i = 1; i <= transactionList.getNumberOfEntries(); i++) {
-            PointsTransaction t = transactionList.getEntry(i);
+
+        for (int i = 1; i <= pointsTransactionList.getNumberOfEntries(); i++) {
+
+            PointsTransaction t = pointsTransactionList.getEntry(i);
             long daysLeft = ChronoUnit.DAYS.between(today, t.getExpiryDate());
+
             if (daysLeft >= 0 && daysLeft <= daysThreshold) {
                 count++;
             }
         }
+
         return count;
-    }
-
-    public String generateExpiryAlertReport(int daysThreshold) {
-        LocalDate today = VirtualClock.getInstance().today();
-
-        // collect only the transactions expiring within the threshold
-        ListInterface<PointsTransaction> expiringList = new DoublyLinkedList<>();
-        for (int i = 1; i <= transactionList.getNumberOfEntries(); i++) {
-            PointsTransaction t = transactionList.getEntry(i);
-            long daysLeft = ChronoUnit.DAYS.between(today, t.getExpiryDate());
-            if (daysLeft >= 0 && daysLeft <= daysThreshold) {
-                expiringList.add(t);
-            }
-        }
-        insertionSortByExpiryDate(expiringList); // soonest-expiring first
-
-        return buildTransactionReport(expiringList,
-                "POINTS EXPIRY ALERT (Next " + daysThreshold + " Days)",
-                "No points are expiring within the next " + daysThreshold + " days.");
-    }
-
-    /**
-     * Returns every recorded points transaction, regardless of expiry date,
-     * sorted with the soonest-expiring transaction first. Useful to verify
-     * that all earned-points batches (including ones far from expiring) are
-     * being tracked correctly.
-     */
-    public String generateAllTransactionsReport() {
-        ListInterface<PointsTransaction> allTransactions = transactionList.copy();
-        insertionSortByExpiryDate(allTransactions);
-
-        return buildTransactionReport(allTransactions,
-                "ALL POINTS TRANSACTIONS (Full History)",
-                "No points transactions have been recorded yet.");
-    }
-
-    // shared formatting logic for both the expiry-alert report and the full-history report
-    private String buildTransactionReport(ListInterface<PointsTransaction> list, String subtitle, String emptyMessage) {
-        LocalDate today = VirtualClock.getInstance().today();
-        DateTimeFormatter dateFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd");
-
-        StringBuilder sb = new StringBuilder();
-        sb.append(ReportFormatUtility.buildHeader(subtitle, VirtualClock.getInstance().now()));
-        sb.append(String.format("%-10s %-18s %-8s %-13s %-13s %-10s%n",
-                "MemberID", "Member Name", "Points", "Earned Date", "Expires On", "Days Left"));
-        sb.append(ReportFormatUtility.separatorLine());
-
-        int total = list.getNumberOfEntries();
-        String[] labels = new String[total];
-        int[] daysLeftValues = new int[total];
-        for (int i = 1; i <= total; i++) {
-            PointsTransaction t = list.getEntry(i);
-            long daysLeft = ChronoUnit.DAYS.between(today, t.getExpiryDate());
-            sb.append(String.format("%-10d %-18s %-8d %-13s %-13s %-10d%n",
-                    t.getMemberID(), t.getMemberName(), t.getPointsEarned(),
-                    t.getEarnedDate().format(dateFormatter), t.getExpiryDate().format(dateFormatter), daysLeft));
-            labels[i - 1] = t.getMemberName();
-            daysLeftValues[i - 1] = (int) Math.max(0, daysLeft);
-        }
-
-        if (total > 0) {
-            sb.append(ReportFormatUtility.separatorLine());
-            sb.append(ReportFormatUtility.buildBarChart("DAYS LEFT UNTIL EXPIRY", labels, daysLeftValues, "days"));
-        }
-        sb.append(ReportFormatUtility.buildFooter("Total transactions", total, emptyMessage));
-        return sb.toString();
-    }
-
-    // =========================================================
-    // Reward Catalog Management (CRUD)
-    // =========================================================
-
-    // ---- Create ----
-    public String addRewardItem(String rewardName, String description, int pointsRequired) {
-        if (rewardName == null || rewardName.trim().isEmpty()) {
-            return "Reward name cannot be empty.";
-        }
-        if (pointsRequired <= 0) {
-            return "Points required must be a positive value.";
-        }
-        RewardItem newReward = new RewardItem(rewardName, description, pointsRequired);
-        rewardCatalog.add(newReward);
-        return "New reward added: " + newReward.getRewardName() +
-                " (ID " + newReward.getRewardID() + ", " + newReward.getPointsRequired() + " points).";
-    }
-
-    // ---- Update ----
-    public String updateRewardItem(int rewardID, String newName, String newDescription, int newPointsRequired) {
-        int position = findRewardPosition(rewardID);
-        if (position == -1) {
-            return "Reward with ID " + rewardID + " not found in catalog.";
-        }
-        if (newPointsRequired <= 0) {
-            return "Points required must be a positive value.";
-        }
-        // existingReward is the same object reference stored inside
-        // rewardCatalog, so mutating its fields here already updates the
-        // catalog directly - no replace() call is needed (same reasoning
-        // as earnPoints()/redeemReward() mutating Member directly)
-        RewardItem existingReward = rewardCatalog.getEntry(position);
-        existingReward.setRewardName(newName);
-        existingReward.setDescription(newDescription);
-        existingReward.setPointsRequired(newPointsRequired);
-        return "Reward ID " + rewardID + " updated successfully.";
-    }
-
-    // ---- Delete ----
-    public String deleteRewardItem(int rewardID) {
-        int position = findRewardPosition(rewardID);
-        if (position == -1) {
-            return "Reward with ID " + rewardID + " not found in catalog.";
-        }
-        RewardItem removed = rewardCatalog.remove(position);
-        return "Reward removed: " + removed.getRewardName() + " (ID " + removed.getRewardID() + ").";
-    }
-
-    // =========================================================
-    // Reward Catalog Display (Read)
-    // =========================================================
-    public String displayRewardCatalog() {
-        StringBuilder sb = new StringBuilder();
-        sb.append("=============================================================\n");
-        sb.append("                    REWARD CATALOG\n");
-        sb.append("=============================================================\n");
-        sb.append(String.format("%-4s %-25s %-15s%n", "ID", "Reward Name", "Points Needed"));
-        sb.append("-------------------------------------------------------------\n");
-
-        for (int i = 1; i <= rewardCatalog.getNumberOfEntries(); i++) {
-            RewardItem r = rewardCatalog.getEntry(i);
-            sb.append(String.format("%-4d %-25s %-15d%n", r.getRewardID(), r.getRewardName(), r.getPointsRequired()));
-        }
-        sb.append("=============================================================\n");
-        return sb.toString();
-    }
-
-    public ListInterface<Member> getMemberList() {
-        return memberList;
     }
 }

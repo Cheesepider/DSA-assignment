@@ -21,8 +21,8 @@ import utility.ValidationUtility;
 
 public class PriorityAllocationUI {
 
-    private Scanner scanner = new Scanner(System.in);
-    private PriorityAllocationControl control = new PriorityAllocationControl();
+    private final Scanner scanner = new Scanner(System.in);
+    private final PriorityAllocationControl control = new PriorityAllocationControl();
 
     public void startUI() {
 
@@ -37,22 +37,18 @@ public class PriorityAllocationUI {
             switch (choice) {
 
                 case 1:
-                    allocateNextRoom();
-                    break;
-
-                case 2:
                     displayWaitingList();
                     break;
 
-                case 3:
+                case 2:
                     searchBooking();
                     break;
 
-                case 4:
+                case 3:
                     generatePriorityAllocationReport();
                     break;
 
-                case 5:
+                case 4:
                     generateFilteredPriorityReport();
                     break;
 
@@ -71,15 +67,16 @@ public class PriorityAllocationUI {
         System.out.println("\n===============================================");
         System.out.println("      VIP & Loyalty Tier Room Allocation");
         System.out.println("===============================================");
-        System.out.println("1. Allocate Next Room");
-        System.out.println("2. Display Priority Waiting List");
-        System.out.println("3. Search Booking");
-        System.out.println("4. Generate Priority Allocation Report");
-        System.out.println("5. Generate Filtered Priority Report");
+        System.out.println("1. Display Priority Waiting List");
+        System.out.println("2. Search Booking");
+        System.out.println("3. Generate Priority Allocation Report");
+        System.out.println("4. Generate Filtered Priority Report");
         System.out.println("0. Back to Main Menu");
         System.out.println("===============================================");
     }
 
+    //not used. (testing method)
+    //to proof that allocation algorithm can independently locate an available room
     private void allocateNextRoom() {
 
         System.out.println("\n--- Allocate Next Room ---");
@@ -93,7 +90,6 @@ public class PriorityAllocationUI {
 
             return;
         }
-
         System.out.println("\nRoom allocation successful!");
         System.out.println(
                 "Booking ID: " + allocatedBooking.getBookingID());
@@ -204,7 +200,7 @@ public class PriorityAllocationUI {
 
         int totalWaiting = control.countWaitingBookings();
         int totalConfirmed = control.countConfirmedBookings();
-        
+
         //Tier counter
         int eliteCount = control.countWaitingBookingsByTier(Member.LoyaltyTier.Elite);
         int diamondCount = control.countWaitingBookingsByTier(Member.LoyaltyTier.Diamond);
@@ -217,7 +213,9 @@ public class PriorityAllocationUI {
         int suiteRooms = control.countRoomsByType(Room.RoomType.SUITE);
 
         System.out.println("\n==========================================================================");
-        System.out.println("                 PRIORITY ALLOCATION SUMMARY REPORT");
+        System.out.println("    Tunku Abdul Rahman University of Management & Technology Resort");
+        System.out.println("                    VIP Room Allocation Subsystem");
+        System.out.println("\n                 PRIORITY ALLOCATION SUMMARY REPORT");
         System.out.println("==========================================================================");
 
         System.out.println("Generated At          : " + reportTime);
@@ -236,15 +234,9 @@ public class PriorityAllocationUI {
         System.out.printf("%-30s : %d%n", "Double Rooms", doubleRooms);
         System.out.printf("%-30s : %d%n", "Suite Rooms", suiteRooms);
 
-        System.out.println("\n==========================================================================");
-        System.out.println("                         WAITING LIST DETAILS");
-        System.out.println("==========================================================================");
-
-        if (waitingList.isEmpty()) {
-            System.out.println("No booking requests are currently waiting.");
-            System.out.println("==========================================================================");
-            return;
-        }
+        System.out.println("\n======================================================================================");
+        System.out.println("                               WAITING LIST DETAILS");
+        System.out.println("======================================================================================");
 
         System.out.printf(
                 "%-9s %-11s %-15s %-11s %-12s %-12s %-12s%n",
@@ -258,7 +250,7 @@ public class PriorityAllocationUI {
         );
 
         System.out.println(
-                "--------------------------------------------------------------------------");
+                "--------------------------------------------------------------------------------------");
 
         for (int i = 1;
                 i <= waitingList.getNumberOfEntries();
@@ -284,7 +276,20 @@ public class PriorityAllocationUI {
             );
         }
         System.out.println(
-                "==========================================================================");
+                "=======================================================================================");
+        
+        if (waitingList.isEmpty()) {
+
+            System.out.println("No booking requests are currently waiting.\n");
+
+        } else {
+            printVerticalBarChart(
+                    eliteCount,
+                    diamondCount,
+                    platinumCount,
+                    regularCount
+            );
+        }
     }
 
     private void generateFilteredPriorityReport() {
@@ -325,7 +330,6 @@ public class PriorityAllocationUI {
                 return;
         }
 
-      
         // Filter 2: Choose RoomType
         System.out.println("\nSelect Room Type:");
         System.out.println("1. Single");
@@ -450,7 +454,12 @@ public class PriorityAllocationUI {
         System.out.println(
                 "\n==========================================================================================");
         System.out.println(
-                "                      FILTERED PRIORITY WAITING LIST REPORT");
+                "            Tunku Abdul Rahman University of Management & Technology Resort");
+
+        System.out.println(
+                "                           VIP Room Allocation Subsystem");
+        System.out.println(
+                "\n                       FILTERED PRIORITY WAITING LIST REPORT");
         System.out.println(
                 "==========================================================================================");
         System.out.println("Generated At : " + LocalDateTime.now());
@@ -458,10 +467,10 @@ public class PriorityAllocationUI {
         System.out.println("Room Type    : " + (selectedRoomType == null ? "All" : selectedRoomType));
         System.out.println("Check-In Date: " + (selectedDate == null ? "All Dates" : selectedDate));
         System.out.println(
-                "------------------------------------------------------------------------------------------");
+                "----------------------------------------------------------------------------------------------");
 
         System.out.println("Total Matching Requests: " + filteredBookings.getNumberOfEntries());
-        System.out.println( "------------------------------------------------------------------------------------------");
+        System.out.println("----------------------------------------------------------------------------------------------");
 
         if (filteredBookings.isEmpty()) {
 
@@ -483,7 +492,7 @@ public class PriorityAllocationUI {
         );
 
         System.out.println(
-                "------------------------------------------------------------------------------------------");
+                "----------------------------------------------------------------------------------------------");
 
         for (int i = 1;
                 i <= filteredBookings.getNumberOfEntries();
@@ -511,7 +520,74 @@ public class PriorityAllocationUI {
         }
 
         System.out.println(
-                "==========================================================================================");
+                "==============================================================================================");
+    }
+
+    private void printVerticalBarChart(
+            int eliteCount,
+            int diamondCount,
+            int platinumCount,
+            int regularCount) {
+
+        int[] counts = {
+            eliteCount,
+            diamondCount,
+            platinumCount,
+            regularCount
+        };
+
+        String[] labels = {
+            "Elite",
+            "Diamond",
+            "Platinum",
+            "Regular"
+        };
+
+        int max = counts[0];
+
+        // Find highest value for Y-axis
+        for (int i = 1; i < counts.length; i++) {
+            if (counts[i] > max) {
+                max = counts[i];
+            }
+        }
+
+        System.out.println("\nWAITING REQUESTS BY LOYALTY TIER\n");
+        System.out.println("Count");
+        System.out.println("  ^");
+
+        // Print bars from top to bottom
+        for (int level = max; level >= 1; level--) {
+
+            System.out.printf("%2d | ", level);
+
+            for (int count : counts) {
+
+                if (count >= level) {
+                    System.out.printf("%-10s", "*");
+                } else {
+                    System.out.printf("%-10s", " ");
+                }
+            }
+
+            System.out.println();
+        }
+
+        // X-axis
+        System.out.print("   +");
+        for (int i = 0; i < counts.length; i++) {
+            System.out.print("----------");
+        }
+
+        System.out.println("> Loyalty Tier");
+
+        System.out.print("     ");
+
+        for (String label : labels) {
+            System.out.printf("%-10s", label);
+        }
+
+        System.out.println();
     }
 
     public static void main(String[] args) {

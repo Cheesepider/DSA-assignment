@@ -10,19 +10,25 @@ import entity.Booking;
 import entity.Member;
 import entity.Room;
 import entity.TaskLog;
+import entity.RewardItem;
+import entity.PointsTransaction;
+import entity.PendingPointsCredit;
+import entity.RedemptionRecord;
+import entity.LifetimeEarnedPoints;
 import dao.RegistrationDAO;
 import boundary.BookingUI;
 import boundary.HousekeepingUI;
 import boundary.RegistrationUI;
 import boundary.PriorityAllocationUI;
 import boundary.LoyaltyUI;
+import control.LoyaltyControl;
 import utility.VirtualClock;
 
 public class App {
 
-    // =========================================================
+    // ==========================================================
     // Global application state — shared across all modules
-    // =========================================================
+    // ==========================================================
     public static ListInterface<Member> memberList = new DoublyLinkedList<>(); // all registered members
     public static ListInterface<Room> roomList = new DoublyLinkedList<>(); // all hotel rooms
 
@@ -36,6 +42,8 @@ public class App {
     public static ListInterface<TaskLog> taskLogStack = new DoublyLinkedList<>(); // use for undo stack
     public static ListInterface<TaskLog> cleaningHistoryList = new DoublyLinkedList<>(); // use for cleaning history
 
+ 
+
     // =========================================================
     // Entry point
     // =========================================================
@@ -43,20 +51,22 @@ public class App {
 
         // --- 1. Load seed data ---
         System.out.println("==========================================");
-        System.out.println("   HOTEL MANAGEMENT SYSTEM - STARTING   ");
+        System.out.println("   SYSTEM STARTING...   ");
         System.out.println("==========================================");
         RegistrationDAO.initializeData();
-        System.out.println("==========================================\n");
+   
 
         // --- 2. Core system loop ---
         java.util.Scanner scanner = new java.util.Scanner(System.in);
         int module = 0;
 
         while (module != 6) {
-            System.out.println("\n==========================================");
-            System.out.println("   HOTEL MANAGEMENT SYSTEM   ");
-            System.out.println("  Time: " + VirtualClock.getInstance().toString());
-            System.out.println("==========================================");
+            System.out.println("=========================================================");
+            System.out.println("Tunku Abdul Rahman University of Management & Technology");
+            System.out.println("                        (TARUMT)");
+            System.out.println("               RESORT MANAGEMENT SYSTEM\n");
+            System.out.println("                                Time: " + VirtualClock.getInstance().toString());
+            System.out.println("=========================================================");
             System.out.println("Select Module:");
             System.out.println("1. Booking Module");
             System.out.println("2. Registration Module  (Check-In / Check-Out)");
@@ -86,7 +96,7 @@ public class App {
                     break;
 
                 case 4:
-                    new LoyaltyUI(memberList).displayMenu();
+                    new LoyaltyUI().startUI();
                     break;
 
                 case 5:
