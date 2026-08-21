@@ -6,7 +6,7 @@ package adt;
 
 /**
  *
- * @author Jerry,KaoYongFeng,LeeShenFung,ThamClement
+ * @author Jerry,KaoYongFeng,LeeShenFung,ThamClement, Lee Shen Fung
  */
 public interface ListInterface<T> {
 
@@ -16,7 +16,7 @@ public interface ListInterface<T> {
 
     T remove(int position);
 
-    T getEntry(int position);
+    T   getEntry(int position);
 
     boolean replace(int position, T newEntry);
 
