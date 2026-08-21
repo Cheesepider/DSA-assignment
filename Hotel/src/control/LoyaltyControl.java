@@ -110,6 +110,16 @@ public class LoyaltyControl {
             }
         }
 
+        if (redemptionHistoryList.isEmpty()) {
+
+            ListInterface<RedemptionRecord> seededRedemptions
+                    = loyaltyDAO.initializeRedemptionHistory(App.memberList, rewardCatalog);
+
+            for (int i = 1; i <= seededRedemptions.getNumberOfEntries(); i++) {
+                redemptionHistoryList.add(seededRedemptions.getEntry(i));
+            }
+        }
+
         sharedDataInitialized = true;
     }
 

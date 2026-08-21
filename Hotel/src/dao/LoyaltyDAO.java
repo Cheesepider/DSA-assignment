@@ -6,6 +6,7 @@ import adt.DoublyLinkedList;
 import adt.ListInterface;
 import entity.Member;
 import entity.PointsTransaction;
+import entity.RedemptionRecord;
 import entity.RewardItem;
 import utility.VirtualClock;
 
@@ -95,5 +96,96 @@ public class LoyaltyDAO {
         }
 
         return transactionList;
+    }
+
+    // ---------------------------------------------------------
+    // Sample redemption records, for demonstrating the Reward Redemption
+    // History report before any real redemption has been made in the demo.
+    // Each entry references a real member (by list position) and a real
+    // catalog reward (by list position), so the seeded history always
+    // matches actual member names and actual reward names/point costs -
+    // it never hardcodes those details separately. If the member list or
+    // reward catalog passed in is smaller than a referenced index (e.g.
+    // running with a trimmed-down demo dataset), that entry is simply
+    // skipped instead of throwing an error.
+    // ---------------------------------------------------------
+    public ListInterface<RedemptionRecord> initializeRedemptionHistory(
+            ListInterface<Member> memberList, ListInterface<RewardItem> rewardCatalog) {
+
+        ListInterface<RedemptionRecord> redemptionList = new DoublyLinkedList<>();
+        LocalDate today = VirtualClock.getInstance().today();
+
+        int totalMembers = memberList.getNumberOfEntries();
+        int totalRewards = rewardCatalog.getNumberOfEntries();
+
+        if (totalMembers == 0 || totalRewards == 0) {
+            return redemptionList; // no members or rewards available to seed redemptions for
+        }
+
+        // demo redeemedDates cycled purely to showcase a spread of dates
+        // in the redemption history report
+        LocalDate[] demoRedeemedDates = {
+            today.minusDays(2),
+            today.minusDays(5),
+            today.minusDays(7),
+            today.minusDays(9),
+            today.minusDays(12),
+            today.minusDays(15),
+            today.minusDays(18),
+            today.minusDays(20),
+            today.minusDays(23),
+            today.minusDays(25),
+            today.minusDays(28),
+            today.minusDays(30),
+            today.minusDays(34),
+            today.minusDays(38),
+            today.minusDays(42)
+        };
+
+        // {memberPosition, rewardPosition} pairs (1-based, matching the
+        // ADT's position convention) describing which member redeemed
+        // which catalog reward
+        int[][] sampleRedemptions = {
+            {1, 5},
+            {1, 1},
+            {1, 11},
+            {2, 3},
+            {2, 6},
+            {2, 12},
+            {3, 8},
+            {3, 2},
+            {3, 17},
+            {4, 2},
+            {4, 9},
+            {4, 15},
+            {5, 6},
+            {6, 5},
+            {6, 4}
+        };
+
+        for (int i = 0; i < sampleRedemptions.length; i++) {
+
+            int memberPosition = sampleRedemptions[i][0];
+            int rewardPosition = sampleRedemptions[i][1];
+
+            if (memberPosition > totalMembers || rewardPosition > totalRewards) {
+                continue; // seed data references a position this dataset doesn't have
+            }
+
+            Member member = memberList.getEntry(memberPosition);
+            RewardItem reward = rewardCatalog.getEntry(rewardPosition);
+            LocalDate redeemedDate = demoRedeemedDates[i % demoRedeemedDates.length];
+
+            redemptionList.add(new RedemptionRecord(
+                    member.getMemberID(),
+                    member.getMemberName(),
+                    reward.getRewardID(),
+                    reward.getRewardName(),
+                    reward.getPointsRequired(),
+                    redeemedDate
+            ));
+        }
+
+        return redemptionList;
     }
 }
