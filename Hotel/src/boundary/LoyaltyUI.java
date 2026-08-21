@@ -664,6 +664,18 @@ public class LoyaltyUI {
 
         if (filteredList.isEmpty()) {
             System.out.println("No members found.");
+            return;
+        }
+
+        System.out.println("\nSelect Graph to Display:");
+        System.out.println("1. Current Spendable Points");
+        System.out.println("2. Lifetime Earned Points");
+        System.out.print("Enter choice (default 1): ");
+
+        String graphChoice = scanner.nextLine().trim();
+
+        if (graphChoice.equals("2")) {
+            printMemberLifetimeEarnedBarChart(filteredList);
         } else {
             printMemberPointsBarChart(filteredList);
         }
@@ -776,9 +788,6 @@ public class LoyaltyUI {
         }
     }
 
-    // Vertical bar chart of each member's spendable points, drawn in the
-    // same style as a typical console bar chart (Y-axis scale on the left,
-    // solid bars rising from the baseline, labels along the X-axis).
     private void printMemberPointsBarChart(ListInterface<Member> list) {
 
         if (list.isEmpty()) {
@@ -796,10 +805,30 @@ public class LoyaltyUI {
             values[i - 1] = m.getLoyaltyPoints();
         }
 
-        printVerticalBarChart("MEMBER SPENDABLE POINTS", labels, values, "point(s)", "Members");
+        printHorizontalBarChart("MEMBER SPENDABLE POINTS", labels, values, "point(s)", "Spendable Points");
     }
 
-   
+  
+    private void printMemberLifetimeEarnedBarChart(ListInterface<Member> list) {
+
+        if (list.isEmpty()) {
+            return;
+        }
+
+        int n = list.getNumberOfEntries();
+        String[] labels = new String[n];
+        int[] values = new int[n];
+
+        for (int i = 1; i <= n; i++) {
+
+            Member m = list.getEntry(i);
+            labels[i - 1] = m.getMemberName();
+            values[i - 1] = control.getLifetimeEarnedPoints(m.getMemberID());
+        }
+
+        printHorizontalBarChart("MEMBER LIFETIME EARNED POINTS", labels, values, "point(s)", "Lifetime Earned Points");
+    }
+
     private void printRedemptionCountByRewardChart(ListInterface<RedemptionRecord> redemptions) {
 
         ListInterface<RewardItem> catalog = control.getRewardCatalog();
@@ -840,11 +869,11 @@ public class LoyaltyUI {
             values[i] = allCounts[i];
         }
 
-        printVerticalBarChart("REWARD REDEMPTION COUNT", labels, values, "redemption(s)", "Rewards");
+        printHorizontalBarChart("REWARD REDEMPTION COUNT", labels, values, "redemption(s)", "Redemption Count");
     }
 
     
-    private void printVerticalBarChart(String title, String[] labels, int[] values, String unitName, String xAxisLabel) {
+    private void printHorizontalBarChart(String title, String[] labels, int[] values, String unitName, String xAxisLabel) {
 
         if (values.length == 0) {
             return;
@@ -879,8 +908,8 @@ public class LoyaltyUI {
             }
         }
 
-        final int MAX_COLUMNS = 10;
-        int columnCount = Math.min(n, MAX_COLUMNS);
+        final int MAX_ROWS = 10;
+        int rowCount = Math.min(n, MAX_ROWS);
 
         int maxValue = sortedValues[0];
 
@@ -891,69 +920,57 @@ public class LoyaltyUI {
             return;
         }
 
-        final int CHART_HEIGHT = 10;
-        final int COLUMN_WIDTH = 10;
+        final int MAX_BAR_LENGTH = 40;
+        int unitsPerStar = (int) Math.ceil((double) maxValue / MAX_BAR_LENGTH);
 
-        int unitsPerRow = (int) Math.ceil((double) maxValue / CHART_HEIGHT);
-
-        if (unitsPerRow < 1) {
-            unitsPerRow = 1;
+        if (unitsPerStar < 1) {
+            unitsPerStar = 1;
         }
 
-        int[] filledRows = new int[columnCount];
+        System.out.println("(Each * represents approximately " + unitsPerStar + " " + unitName + ")\n");
 
-        for (int i = 0; i < columnCount; i++) {
+        int labelWidth = 10;
 
-            filledRows[i] = (int) Math.round((double) sortedValues[i] / unitsPerRow);
+        for (int i = 0; i < rowCount; i++) {
 
-            if (filledRows[i] > CHART_HEIGHT) {
-                filledRows[i] = CHART_HEIGHT;
+            if (sortedLabels[i].length() > labelWidth) {
+                labelWidth = sortedLabels[i].length();
             }
         }
 
-        System.out.println("(Each row on the Y-axis \u2248 " + unitsPerRow + " " + unitName + ")\n");
+        for (int i = 0; i < rowCount; i++) {
 
-        for (int row = CHART_HEIGHT; row >= 1; row--) {
+            int barLength = (int) Math.round((double) sortedValues[i] / unitsPerStar);
 
-            System.out.printf("%6d | ", row * unitsPerRow);
+            StringBuilder bar = new StringBuilder();
 
-            for (int col = 0; col < columnCount; col++) {
-                System.out.printf("%-" + COLUMN_WIDTH + "s", filledRows[col] >= row ? "*****" : " ");
+            for (int k = 0; k < barLength; k++) {
+                bar.append('*');
             }
 
-            System.out.println();
+            System.out.printf("%-" + labelWidth + "s | %6d | %s%n", sortedLabels[i], sortedValues[i], bar.toString());
         }
 
-        System.out.print("       +");
+        // X-axis line beneath the bars, aligned to start where the bars
+        // themselves start (after the label and value columns)
+        int axisIndent = labelWidth + 3 + 6 + 3; // label col + " | " + value col + " | "
 
-        for (int col = 0; col < columnCount; col++) {
+        StringBuilder axisPrefix = new StringBuilder();
 
-            StringBuilder dashes = new StringBuilder();
-
-            for (int d = 0; d < COLUMN_WIDTH; d++) {
-                dashes.append('-');
-            }
-
-            System.out.print(dashes);
+        for (int k = 0; k < axisIndent; k++) {
+            axisPrefix.append(' ');
         }
 
-        System.out.println("> " + xAxisLabel);
+        StringBuilder axisDashes = new StringBuilder();
 
-        System.out.print("        ");
-
-        for (int col = 0; col < columnCount; col++) {
-
-            String shortLabel = sortedLabels[col].length() > 9
-                    ? sortedLabels[col].substring(0, 9)
-                    : sortedLabels[col];
-
-            System.out.printf("%-" + COLUMN_WIDTH + "s", shortLabel);
+        for (int k = 0; k < MAX_BAR_LENGTH; k++) {
+            axisDashes.append('-');
         }
 
-        System.out.println();
+        System.out.println(axisPrefix + "+" + axisDashes + "> " + xAxisLabel);
 
-        if (n > MAX_COLUMNS) {
-            System.out.println("\n(Showing top " + MAX_COLUMNS + " of " + n + " by value)");
+        if (n > MAX_ROWS) {
+            System.out.println("\n(Showing top " + MAX_ROWS + " of " + n + " by value)");
         }
     }
 
