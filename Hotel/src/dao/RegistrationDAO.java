@@ -32,16 +32,16 @@ public class RegistrationDAO {
         App.roomList.add(new Room("101", RoomType.SINGLE, RoomStatus.Ready_for_Check_In));
         App.roomList.add(new Room("102", RoomType.SINGLE, RoomStatus.Ready_for_Check_In));
         App.roomList.add(new Room("103", RoomType.SINGLE, RoomStatus.Dirty));
-        App.roomList.add(new Room("104", RoomType.SINGLE, RoomStatus.Inspected));
+        App.roomList.add(new Room("104", RoomType.SINGLE, RoomStatus.Dirty));
 
         // Floor 2 - Double rooms (base rate $150/night)
         App.roomList.add(new Room("201", RoomType.DOUBLE, RoomStatus.Ready_for_Check_In));
         App.roomList.add(new Room("202", RoomType.DOUBLE, RoomStatus.Ready_for_Check_In));
-        App.roomList.add(new Room("203", RoomType.DOUBLE, RoomStatus.Cleaning_In_Progress));
+        App.roomList.add(new Room("203", RoomType.DOUBLE, RoomStatus.Dirty));
 
         // Floor 3 - Suites (base rate $300/night)
         App.roomList.add(new Room("301", RoomType.SUITE, RoomStatus.Ready_for_Check_In));
-        App.roomList.add(new Room("302", RoomType.SUITE, RoomStatus.Inspected));
+        App.roomList.add(new Room("302", RoomType.SUITE, RoomStatus.Dirty));
 
         System.out.println("[DAO] " + App.roomList.getNumberOfEntries() + " rooms loaded.");
     }
