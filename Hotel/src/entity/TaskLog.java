@@ -1,3 +1,4 @@
+// Author: Lee Shen Fung
 package entity;
 
 import java.time.LocalDateTime;
@@ -11,16 +12,18 @@ public class TaskLog {
     private Room.RoomStatus oldStatus;
     private Room.RoomStatus newStatus;
     private LocalDateTime actionTime;
+    private String cleanerName; 
 
     public TaskLog() {
     }
 
-    public TaskLog(Room room, Room.RoomStatus oldStatus, Room.RoomStatus newStatus, LocalDateTime actionTime) {
+    public TaskLog(Room room, Room.RoomStatus oldStatus, Room.RoomStatus newStatus, LocalDateTime actionTime, String cleanerName) {
         this.logID = logIDCounter.getAndIncrement();
         this.room = room;
         this.oldStatus = oldStatus;
         this.newStatus = newStatus;
         this.actionTime = actionTime;
+        this.cleanerName = cleanerName;
     }
 
     public int getLogID() { return logID; }
@@ -38,6 +41,9 @@ public class TaskLog {
     public LocalDateTime getActionTime() { return actionTime; }
     public void setActionTime(LocalDateTime actionTime) { this.actionTime = actionTime; }
 
+    public String getCleanerName() { return cleanerName; }
+    public void setCleanerName(String cleanerName) { this.cleanerName = cleanerName; }
+
     @Override
     public String toString() {
         return "TaskLog{" +
@@ -46,6 +52,7 @@ public class TaskLog {
                 ", oldStatus=" + oldStatus +
                 ", newStatus=" + newStatus +
                 ", actionTime=" + actionTime +
+                ", cleanerName='" + cleanerName + '\'' +
                 '}';
     }
 }

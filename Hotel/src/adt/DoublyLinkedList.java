@@ -7,7 +7,7 @@ package adt;
 
 /**
  *
- * @author Jerry, Kao Yong Feng, Lee Shen Fung, ThamClement
+ * @author Jerry, Kao Yong Feng, Lee Shen Fung, ThamClement, Lee Shen Fung
  * @param <T>
  */
 public class DoublyLinkedList<T> implements ListInterface<T> {

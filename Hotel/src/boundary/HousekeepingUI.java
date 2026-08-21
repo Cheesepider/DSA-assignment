@@ -1,3 +1,4 @@
+// Author: Lee Shen Fung
 package boundary;
 
 import adt.ListInterface;
@@ -6,7 +7,6 @@ import entity.Room;
 import entity.TaskLog;
 import utility.VirtualClock;
 
-import java.time.LocalDate;
 import java.util.Scanner;
 
 public class HousekeepingUI {
@@ -17,14 +17,15 @@ public class HousekeepingUI {
 
         while (choice != 0) {
             System.out.println("\n==========================================");
+            System.out.println(" Tunku Abdul Rahman University of Management & Technology Resort  ");
             System.out.println("   HOUSEKEEPING & TASK LOG MODULE  ");
             System.out.println("  Time: " + VirtualClock.getInstance().toString());
             System.out.println("==========================================\n");
-            System.out.println("1. Task List");
+            System.out.println("1. Clean List / Task List");
             System.out.println("2. Update Room Status (Advance Workflow)");
             System.out.println("3. Undo Last Status Update (Instantly Roll Back)");
             System.out.println("==========================================");
-            System.out.println("4. Generate Cleaning History & Summary Report");
+            System.out.println("4. Generate Cleaning History & KPI Summary Report");
             System.out.println("5. Generate Pending Task Report");
             System.out.println("==========================================");
             System.out.println("9. Advance Time");
@@ -89,16 +90,52 @@ public class HousekeepingUI {
         }
 
         viewPendingTasks();
-        System.out.print("\nEnter the No. of the room to advance its status (or 0 to cancel): ");
+        System.out.print("\nEnter the No. of the room to advance its status (or press Enter/0 to cancel): ");
+        String roomInput = scanner.nextLine().trim();
+        
+        if (roomInput.isEmpty() || roomInput.equals("0")) {
+            System.out.println("Operation cancelled.");
+            return;
+        }
+
         try {
-            int selection = Integer.parseInt(scanner.nextLine().trim());
-            if (selection == 0) return;
+            int selection = Integer.parseInt(roomInput);
 
             if (selection > 0 && selection <= pendingRooms.getNumberOfEntries()) {
                 Room selectedRoom = pendingRooms.getEntry(selection);
                 Room.RoomStatus oldStatus = selectedRoom.getRoomStatus();
+                String staffName = "";
+
+                if (oldStatus == Room.RoomStatus.Dirty) {
+                    System.out.println("\n--- Assign Staff to Room " + selectedRoom.getRoomNumber() + " ---");
+                    System.out.println("1. Ahmad");
+                    System.out.println("2. Sarah");
+                    System.out.println("3. Muthu");
+                    System.out.println("4. Mei Ling");
+                    System.out.println("5. John");
+                    System.out.print("Select Staff (1-5, or press Enter/0 to cancel): ");
+                    
+                    String staffInput = scanner.nextLine().trim();
+                    
+                    if (staffInput.isEmpty() || staffInput.equals("0")) {
+                        System.out.println("Assignment cancelled.");
+                        return; 
+                    }
+                    
+                    int staffChoice = Integer.parseInt(staffInput);
+                    switch (staffChoice) {
+                        case 1: staffName = "Ahmad"; break;
+                        case 2: staffName = "Sarah"; break;
+                        case 3: staffName = "Muthu"; break;
+                        case 4: staffName = "Mei Ling"; break;
+                        case 5: staffName = "John"; break;
+                        default: 
+                            System.out.println("Invalid selection. Operation cancelled.");
+                            return; 
+                    }
+                }
                 
-                boolean success = HousekeepingControl.advanceRoomStatus(selectedRoom);
+                boolean success = HousekeepingControl.advanceRoomStatus(selectedRoom, staffName);
                 
                 if (success) {
                     System.out.println("Success! Room " + selectedRoom.getRoomNumber() + 
@@ -107,10 +144,10 @@ public class HousekeepingUI {
                     System.out.println("Failed to advance status. (Occupied or Ready rooms cannot be advanced here).");
                 }
             } else {
-                System.out.println("Invalid selection.");
+                System.out.println("Invalid selection. Operation cancelled.");
             }
         } catch (NumberFormatException e) {
-            System.out.println("Invalid input. Please enter a number.");
+            System.out.println("Invalid input. Operation cancelled.");
         }
     }
 
