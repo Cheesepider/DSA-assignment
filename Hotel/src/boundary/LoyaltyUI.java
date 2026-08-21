@@ -670,12 +670,15 @@ public class LoyaltyUI {
         System.out.println("\nSelect Graph to Display:");
         System.out.println("1. Current Spendable Points");
         System.out.println("2. Lifetime Earned Points");
+        System.out.println("3. Back (Skip Graph)");
         System.out.print("Enter choice (default 1): ");
 
         String graphChoice = scanner.nextLine().trim();
 
         if (graphChoice.equals("2")) {
             printMemberLifetimeEarnedBarChart(filteredList);
+        } else if (graphChoice.equals("3")) {
+            // Back - skip the graph
         } else {
             printMemberPointsBarChart(filteredList);
         }
@@ -789,7 +792,8 @@ public class LoyaltyUI {
         System.out.println("\nSelect Graph to Display:");
         System.out.println("1. Top 3 Rewards");
         System.out.println("2. Top 10 Rewards");
-        System.out.println("3. Back (Skip Graph)");
+        System.out.println("3. Show All Rewards");
+        System.out.println("4. Back (Skip Graph)");
         System.out.print("Enter choice (default 1): ");
 
         String graphChoice = scanner.nextLine().trim();
@@ -797,6 +801,8 @@ public class LoyaltyUI {
         if (graphChoice.equals("2")) {
             printRedemptionCountByRewardChart(list, 10);
         } else if (graphChoice.equals("3")) {
+            printRedemptionCountByRewardChart(list, Integer.MAX_VALUE);
+        } else if (graphChoice.equals("4")) {
             // Back - skip the graph
         } else {
             printRedemptionCountByRewardChart(list, 3);
