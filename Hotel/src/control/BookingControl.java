@@ -238,37 +238,55 @@ public class BookingControl {
         }
 
         System.out.println("\n--- Active Bookings for " + member.getMemberName() + " ---");
-        boolean foundBooking = false;
+        ListInterface<Booking> activeBookings = new DoublyLinkedList<>();
         for (int i = 1; i <= App.bookingList.getNumberOfEntries(); i++) {
             Booking b = App.bookingList.getEntry(i);
             if (b.getMember().getMemberID() == member.getMemberID()) {
-                System.out.println("Booking ID: " + b.getBookingID() + 
-                                   " | Room: " + (b.getRoom() != null ? b.getRoom().getRoomNumber() : "N/A") +
-                                   " | Check-In: " + b.getCheckInDate() + 
-                                   " | Check-Out: " + b.getCheckOutDate() +
-                                   " | Status: " + b.getBookingStatus());
-                foundBooking = true;
+                activeBookings.add(b);
             }
         }
-        if (!foundBooking) {
+        if (activeBookings.isEmpty()) {
             System.out.println("No confirmed bookings found.");
+        } else {
+            System.out.printf("%-10s | %-10s | %-12s | %-14s | %-14s | %-15s\n", "Booking ID", "Room No.", "Room Type", "Check-In Date", "Check-Out Date", "Status");
+            System.out.println("------------------------------------------------------------------------------------------");
+            for (int i = 1; i <= activeBookings.getNumberOfEntries(); i++) {
+                Booking b = activeBookings.getEntry(i);
+                System.out.printf("%-10d | %-10s | %-12s | %-14s | %-14s | %-15s\n",
+                        b.getBookingID(),
+                        (b.getRoom() != null ? b.getRoom().getRoomNumber() : "N/A"),
+                        (b.getRoom() != null && b.getRoom().getRoomType() != null ? b.getRoom().getRoomType().toString() : "N/A"),
+                        b.getCheckInDate(),
+                        b.getCheckOutDate(),
+                        b.getBookingStatus());
+            }
+            System.out.println("------------------------------------------------------------------------------------------");
         }
 
         System.out.println("\n--- Past Bookings for " + member.getMemberName() + " ---");
-        boolean foundPast = false;
+        ListInterface<Booking> pastBookings = new DoublyLinkedList<>();
         for (int i = 1; i <= App.bookingHistoryList.getNumberOfEntries(); i++) {
             Booking b = App.bookingHistoryList.getEntry(i);
             if (b.getMember().getMemberID() == member.getMemberID()) {
-                System.out.println("Booking ID: " + b.getBookingID() + 
-                                   " | Room: " + (b.getRoom() != null ? b.getRoom().getRoomNumber() : "N/A") +
-                                   " | Check-In: " + b.getCheckInDate() + 
-                                   " | Check-Out: " + b.getCheckOutDate() +
-                                   " | Status: " + b.getBookingStatus());
-                foundPast = true;
+                pastBookings.add(b);
             }
         }
-        if (!foundPast) {
+        if (pastBookings.isEmpty()) {
             System.out.println("No past bookings found.");
+        } else {
+            System.out.printf("%-10s | %-10s | %-12s | %-14s | %-14s | %-15s\n", "Booking ID", "Room No.", "Room Type", "Check-In Date", "Check-Out Date", "Status");
+            System.out.println("------------------------------------------------------------------------------------------");
+            for (int i = 1; i <= pastBookings.getNumberOfEntries(); i++) {
+                Booking b = pastBookings.getEntry(i);
+                System.out.printf("%-10d | %-10s | %-12s | %-14s | %-14s | %-15s\n",
+                        b.getBookingID(),
+                        (b.getRoom() != null ? b.getRoom().getRoomNumber() : "N/A"),
+                        (b.getRoom() != null && b.getRoom().getRoomType() != null ? b.getRoom().getRoomType().toString() : "N/A"),
+                        b.getCheckInDate(),
+                        b.getCheckOutDate(),
+                        b.getBookingStatus());
+            }
+            System.out.println("------------------------------------------------------------------------------------------");
         }
 
         System.out.println("\n--- Booking Requests in Waiting List ---");
@@ -276,15 +294,23 @@ public class BookingControl {
         for (int i = 1; i <= App.bookingRequestsQueue.getNumberOfEntries(); i++) {
             Booking b = App.bookingRequestsQueue.getEntry(i);
             if (b.getMember().getMemberID() == member.getMemberID()) {
-                System.out.println("Position: " + i + 
-                                   " | Check-In: " + b.getCheckInDate() + 
-                                   " | Check-Out: " + b.getCheckOutDate() +
-                                   " | Status: " + b.getBookingStatus());
-                foundRequest = true;
+                if (!foundRequest) {
+                    System.out.printf("%-10s | %-12s | %-14s | %-14s | %-15s\n", "Position", "Room Type", "Check-In Date", "Check-Out Date", "Status");
+                    System.out.println("-----------------------------------------------------------------------------");
+                    foundRequest = true;
+                }
+                System.out.printf("%-10d | %-12s | %-14s | %-14s | %-15s\n",
+                        i,
+                        (b.getRoom() != null && b.getRoom().getRoomType() != null ? b.getRoom().getRoomType().toString() : "N/A"),
+                        b.getCheckInDate(),
+                        b.getCheckOutDate(),
+                        b.getBookingStatus());
             }
         }
         if (!foundRequest) {
             System.out.println("No pending booking requests found.");
+        } else {
+            System.out.println("-----------------------------------------------------------------------------");
         }
     }
 
@@ -296,20 +322,29 @@ public class BookingControl {
 
         Scanner scanner = new Scanner(System.in);
         System.out.println("\n--- Your Active Bookings ---");
-        boolean foundBooking = false;
+        ListInterface<Booking> activeBookings = new DoublyLinkedList<>();
         for (int i = 1; i <= App.bookingList.getNumberOfEntries(); i++) {
             Booking b = App.bookingList.getEntry(i);
             if (b.getMember().getMemberID() == member.getMemberID()) {
-                System.out.println("Booking ID: " + b.getBookingID() + 
-                                   " | Room: " + (b.getRoom() != null ? b.getRoom().getRoomNumber() : "N/A") +
-                                   " | Check-In: " + b.getCheckInDate() + 
-                                   " | Check-Out: " + b.getCheckOutDate() +
-                                   " | Status: " + b.getBookingStatus());
-                foundBooking = true;
+                activeBookings.add(b);
             }
         }
-        if (!foundBooking) {
+        if (activeBookings.isEmpty()) {
             System.out.println("No active bookings found.");
+        } else {
+            System.out.printf("%-10s | %-10s | %-12s | %-14s | %-14s | %-15s\n", "Booking ID", "Room No.", "Room Type", "Check-In Date", "Check-Out Date", "Status");
+            System.out.println("------------------------------------------------------------------------------------------");
+            for (int i = 1; i <= activeBookings.getNumberOfEntries(); i++) {
+                Booking b = activeBookings.getEntry(i);
+                System.out.printf("%-10d | %-10s | %-12s | %-14s | %-14s | %-15s\n",
+                        b.getBookingID(),
+                        (b.getRoom() != null ? b.getRoom().getRoomNumber() : "N/A"),
+                        (b.getRoom() != null && b.getRoom().getRoomType() != null ? b.getRoom().getRoomType().toString() : "N/A"),
+                        b.getCheckInDate(),
+                        b.getCheckOutDate(),
+                        b.getBookingStatus());
+            }
+            System.out.println("------------------------------------------------------------------------------------------");
         }
 
         System.out.println("\n--- Booking Requests in Waiting List ---");
@@ -317,15 +352,23 @@ public class BookingControl {
         for (int i = 1; i <= App.bookingRequestsQueue.getNumberOfEntries(); i++) {
             Booking b = App.bookingRequestsQueue.getEntry(i);
             if (b.getMember().getMemberID() == member.getMemberID()) {
-                System.out.println("Position: " + i + 
-                                   " | Check-In: " + b.getCheckInDate() + 
-                                   " | Check-Out: " + b.getCheckOutDate() +
-                                   " | Status: " + b.getBookingStatus());
-                foundRequest = true;
+                if (!foundRequest) {
+                    System.out.printf("%-10s | %-12s | %-14s | %-14s | %-15s\n", "Position", "Room Type", "Check-In Date", "Check-Out Date", "Status");
+                    System.out.println("-----------------------------------------------------------------------------");
+                    foundRequest = true;
+                }
+                System.out.printf("%-10d | %-12s | %-14s | %-14s | %-15s\n",
+                        i,
+                        (b.getRoom() != null && b.getRoom().getRoomType() != null ? b.getRoom().getRoomType().toString() : "N/A"),
+                        b.getCheckInDate(),
+                        b.getCheckOutDate(),
+                        b.getBookingStatus());
             }
         }
         if (!foundRequest) {
             System.out.println("No pending booking requests found.");
+        } else {
+            System.out.println("-----------------------------------------------------------------------------");
         }
 
         System.out.print("\nEnter the Booking ID or Waitlist Position to cancel (or 0 to exit): ");
@@ -397,20 +440,34 @@ public class BookingControl {
         }
 
         Scanner scanner = new Scanner(System.in);
-        System.out.println("\n--- Your Active Bookings ---");
-        boolean foundBooking = false;
+        ListInterface<Booking> activeBookings = new DoublyLinkedList<>();
         for (int i = 1; i <= App.bookingList.getNumberOfEntries(); i++) {
             Booking b = App.bookingList.getEntry(i);
             if (b.getMember().getMemberID() == member.getMemberID() && b.getBookingStatus() != Booking.BookingStatus.CANCELLED) {
-                System.out.println("Booking ID: " + b.getBookingID() + " | Room: " + (b.getRoom() != null ? b.getRoom().getRoomNumber() : "N/A") + " | Type: " + (b.getRoom() != null ? b.getRoom().getRoomType() : "N/A") + " | " + b.getCheckInDate() + " to " + b.getCheckOutDate());
-                foundBooking = true;
+                activeBookings.add(b);
             }
         }
 
-        if (!foundBooking) {
+        if (activeBookings.isEmpty()) {
+            System.out.println("\n--- Your Active Bookings ---");
             System.out.println("You have no active bookings to update.");
             return;
         }
+
+        System.out.println("\n--- Your Active Bookings ---");
+        System.out.printf("%-10s | %-10s | %-12s | %-14s | %-14s | %-15s\n", "Booking ID", "Room No.", "Room Type", "Check-In Date", "Check-Out Date", "Status");
+        System.out.println("------------------------------------------------------------------------------------------");
+        for (int i = 1; i <= activeBookings.getNumberOfEntries(); i++) {
+            Booking b = activeBookings.getEntry(i);
+            System.out.printf("%-10d | %-10s | %-12s | %-14s | %-14s | %-15s\n",
+                    b.getBookingID(),
+                    (b.getRoom() != null ? b.getRoom().getRoomNumber() : "N/A"),
+                    (b.getRoom() != null && b.getRoom().getRoomType() != null ? b.getRoom().getRoomType().toString() : "N/A"),
+                    b.getCheckInDate(),
+                    b.getCheckOutDate(),
+                    b.getBookingStatus());
+        }
+        System.out.println("------------------------------------------------------------------------------------------");
 
         System.out.print("\nEnter the Booking ID to update (or 0 to exit): ");
         try {

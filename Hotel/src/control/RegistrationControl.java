@@ -55,12 +55,25 @@ public class RegistrationControl {
             System.out.println("No members found.");
             return;
         }
+
+        System.out.println("\n=========================================================================================================");
+        System.out.println("                                            MEMBER LIST                                                  ");
+        System.out.println("=========================================================================================================");
+        System.out.printf("%-10s | %-20s | %-15s | %-25s | %-12s | %-14s\n",
+                "Member ID", "Name", "Phone Number", "Email", "Loyalty Tier", "Loyalty Points");
+        System.out.println("---------------------------------------------------------------------------------------------------------");
         for (int i = 1; i <= App.memberList.getNumberOfEntries(); i++) {
             Member member = App.memberList.getEntry(i);
-            System.out.println("Member ID: " + member.getMemberID() + ", Name: " + member.getMemberName() + ", Email: "
-                    + member.getEmail() + ", Phone Number: " + member.getPhoneNumber() + ", Loyalty Tier: "
-                    + member.getLoyaltyTier());
+            System.out.printf("%-10d | %-20s | %-15s | %-25s | %-12s | %-14d\n",
+                    member.getMemberID(),
+                    member.getMemberName() != null ? member.getMemberName() : "N/A",
+                    member.getPhoneNumber() != null ? member.getPhoneNumber() : "N/A",
+                    member.getEmail() != null ? member.getEmail() : "N/A",
+                    member.getLoyaltyTier() != null ? member.getLoyaltyTier().toString() : "Regular",
+                    member.getLoyaltyPoints());
         }
+        System.out.println("=========================================================================================================");
+        System.out.println("Total Members: " + App.memberList.getNumberOfEntries());
     }
 
     // customer registration into a waitlist
