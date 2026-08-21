@@ -51,20 +51,22 @@ public class App {
 
         // --- 1. Load seed data ---
         System.out.println("==========================================");
-        System.out.println("   HOTEL MANAGEMENT SYSTEM - STARTING   ");
+        System.out.println("   SYSTEM STARTING...   ");
         System.out.println("==========================================");
         RegistrationDAO.initializeData();
-        System.out.println("==========================================\n");
+   
 
         // --- 2. Core system loop ---
         java.util.Scanner scanner = new java.util.Scanner(System.in);
         int module = 0;
 
         while (module != 6) {
-            System.out.println("\n==========================================");
-            System.out.println("   HOTEL MANAGEMENT SYSTEM   ");
-            System.out.println("  Time: " + VirtualClock.getInstance().toString());
-            System.out.println("==========================================");
+            System.out.println("=========================================================");
+            System.out.println("Tunku Abdul Rahman University of Management & Technology");
+            System.out.println("                        (TARUMT)");
+            System.out.println("               RESORT MANAGEMENT SYSTEM\n");
+            System.out.println("                                Time: " + VirtualClock.getInstance().toString());
+            System.out.println("=========================================================");
             System.out.println("Select Module:");
             System.out.println("1. Booking Module");
             System.out.println("2. Registration Module  (Check-In / Check-Out)");
