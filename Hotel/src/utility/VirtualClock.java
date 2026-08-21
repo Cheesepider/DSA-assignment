@@ -28,9 +28,9 @@ public class VirtualClock {
             DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
 
     private VirtualClock() {
-        // Start from the actual current system date and time
+        // Fixed demo start date: 2026-08-15 at midnight
         this.realStartTime = LocalDateTime.now();
-        this.virtualStartTime = this.realStartTime;
+        this.virtualStartTime = LocalDateTime.of(2026, 8, 15, 0, 0, 0);
     }
 
     public static synchronized VirtualClock getInstance() {
@@ -94,10 +94,12 @@ public class VirtualClock {
         );
     }
 
-    // Reset the reference point of the virtual clock
+    // Reset the reference point of the virtual clock and auto-sync all booking statuses
     private void setVirtualTime(LocalDateTime newVirtualTime) {
         this.realStartTime = LocalDateTime.now();
         this.virtualStartTime = newVirtualTime;
+        // Automatically reconcile booking statuses to prevent flooding on next operation
+        BookingStatusSyncManager.syncAll(newVirtualTime.toLocalDate());
     }
 
     @Override
